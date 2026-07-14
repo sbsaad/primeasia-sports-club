@@ -75,7 +75,7 @@ export async function submitCV(formData: FormData): Promise<SubmitResult> {
   let blobUrl: string;
   try {
     const blob = await put(blobPath, file, {
-      access: "private",
+      access: "public",
       contentType: "application/pdf",
     });
     blobUrl = blob.url;
