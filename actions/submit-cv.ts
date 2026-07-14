@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { users, cvSubmissions } from "@/lib/db/schema";
+import { users, cvSubmissions, settings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { put } from "@vercel/blob";
 import { studentFormSchema } from "@/lib/validations";
@@ -19,12 +19,33 @@ export async function submitCV(formData: FormData): Promise<SubmitResult> {
     return { success: false, error: "Not authenticated." };
   }
 
+  // Check active recruitment dates from settings
+  const now = new Date();
+  try {
+    const startSetting = await db.select().from(settings).where(eq(settings.key, "application_start")).limit(1);
+    const endSetting = await db.select().from(settings).where(eq(settings.key, "application_end")).limit(1);
+    
+    if (startSetting[0] && endSetting[0]) {
+      const startDate = new Date(startSetting[0].value);
+      const endDate = new Date(endSetting[0].value);
+      if (now < startDate || now > endDate) {
+        return { success: false, error: "Recruitment is currently closed. Applications are not being accepted at this time." };
+      }
+    }
+  } catch (err) {
+    console.error("Failed to check application dates setting:", err);
+  }
+
   // Validate form fields
   const raw = {
     fullName: formData.get("fullName") as string,
     studentId: formData.get("studentId") as string,
     phone: formData.get("phone") as string,
     position: formData.get("position") as string,
+    department: formData.get("department") as string,
+    cgpa: formData.get("cgpa") as string,
+    experienceDetails: formData.get("experienceDetails") as string,
+    whyAppropriate: formData.get("whyAppropriate") as string,
   };
 
   const parsed = studentFormSchema.safeParse(raw);
@@ -35,7 +56,8 @@ export async function submitCV(formData: FormData): Promise<SubmitResult> {
     };
   }
 
-  const { fullName, studentId, phone, position } = parsed.data;
+  const { fullName, studentId, phone, position, department, cgpa, experienceDetails, whyAppropriate } = parsed.data;
+  const deviceInfo = (formData.get("deviceInfo") as string) || "{}";
 
   // Calculate semester
   const semResult = calculateSemester(studentId);
@@ -68,14 +90,14 @@ export async function submitCV(formData: FormData): Promise<SubmitResult> {
 
   const dbUser = dbUsers[0];
 
-  // Upload to Vercel Blob
+  // Upload to Vercel Blob (Private upload)
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const blobPath = `cvs/${dbUser.id}/${Date.now()}-${safeName}`;
 
   let blobUrl: string;
   try {
     const blob = await put(blobPath, file, {
-      access: "public",
+      access: "private",
       contentType: "application/pdf",
     });
     blobUrl = blob.url;
@@ -98,6 +120,11 @@ export async function submitCV(formData: FormData): Promise<SubmitResult> {
       phone,
       position,
       semester: semResult.semester,
+      department,
+      cgpa,
+      experienceDetails,
+      whyAppropriate,
+      deviceInfo,
       blobUrl,
       filename: file.name,
     }).returning({ id: cvSubmissions.id });

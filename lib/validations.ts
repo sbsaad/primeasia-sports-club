@@ -28,6 +28,24 @@ export const studentFormSchema = z.object({
   position: z.enum(POSITIONS, {
     error: "Please select a position",
   }),
+  department: z
+    .string()
+    .min(2, "Department name must be at least 2 characters")
+    .max(100, "Department must be under 100 characters"),
+  cgpa: z
+    .string()
+    .refine((val) => {
+      const parsed = parseFloat(val);
+      return !isNaN(parsed) && parsed >= 0 && parsed <= 4.0;
+    }, "CGPA must be a decimal between 0.00 and 4.00"),
+  experienceDetails: z
+    .string()
+    .min(5, "Please provide more details (minimum 5 characters)")
+    .max(1000, "Experience details must be under 1000 characters"),
+  whyAppropriate: z
+    .string()
+    .min(5, "Please provide more details (minimum 5 characters)")
+    .max(1000, "Response must be under 1000 characters"),
 });
 
 export type StudentFormValues = z.infer<typeof studentFormSchema>;

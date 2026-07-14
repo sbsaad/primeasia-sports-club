@@ -1,11 +1,10 @@
 // app/admin/page.tsx
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
-import { cvSubmissions, users } from "@/lib/db/schema";
 import Navbar from "@/components/Navbar";
 import AdminTable, { type SubmissionRow } from "@/components/AdminTable";
-import { eq } from "drizzle-orm";
+
+import { getAllSubmissions, getRecruitmentDates } from "@/actions/admin";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")
@@ -21,24 +20,9 @@ export default async function AdminPage() {
   const isAdmin = ADMIN_EMAILS.includes(session.user.email.toLowerCase());
   if (!isAdmin) redirect("/dashboard");
 
-  // Fetch all submissions with joined user data
-  const rows = await db
-    .select({
-      id: cvSubmissions.id,
-      fullName: cvSubmissions.fullName,
-      studentId: cvSubmissions.studentId,
-      phone: cvSubmissions.phone,
-      position: cvSubmissions.position,
-      semester: cvSubmissions.semester,
-      blobUrl: cvSubmissions.blobUrl,
-      filename: cvSubmissions.filename,
-      uploadedAt: cvSubmissions.uploadedAt,
-      userEmail: users.email,
-      userAvatar: users.avatar,
-    })
-    .from(cvSubmissions)
-    .innerJoin(users, eq(cvSubmissions.userId, users.id))
-    .orderBy(cvSubmissions.uploadedAt);
+  // Fetch all submissions and application dates using server actions
+  const rows = await getAllSubmissions();
+  const dates = await getRecruitmentDates();
 
   return (
     <div style={{ minHeight: "100vh" }}>
@@ -59,7 +43,7 @@ export default async function AdminPage() {
           </p>
         </div>
 
-        <AdminTable rows={rows as SubmissionRow[]} />
+        <AdminTable rows={rows as SubmissionRow[]} initialDates={dates} />
       </main>
     </div>
   );

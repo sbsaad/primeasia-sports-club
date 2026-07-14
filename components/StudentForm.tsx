@@ -20,6 +20,11 @@ interface Props {
     position: string;
     fullName: string;
     studentId: string;
+    phone: string;
+    department: string;
+    cgpa: string;
+    experienceDetails: string;
+    whyAppropriate: string;
   } | null;
 }
 
@@ -32,10 +37,19 @@ export default function StudentForm({ existingSubmission }: Props) {
   // Form fields
   const [fullName, setFullName] = useState(existingSubmission?.fullName ?? "");
   const [studentId, setStudentId] = useState(existingSubmission?.studentId ?? "");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(existingSubmission?.phone ?? "");
+  const [department, setDepartment] = useState(existingSubmission?.department ?? "");
+  const [cgpa, setCgpa] = useState(existingSubmission?.cgpa ?? "");
+  const [experienceDetails, setExperienceDetails] = useState(existingSubmission?.experienceDetails ?? "");
+  const [whyAppropriate, setWhyAppropriate] = useState(existingSubmission?.whyAppropriate ?? "");
   const [position, setPosition] = useState<Position | "">(
     (existingSubmission?.position as Position) ?? ""
   );
+  
+  // Consents
+  const [deviceConsent, setDeviceConsent] = useState(false);
+  const [cookieConsent, setCookieConsent] = useState(false);
+
   const [cvFile, setCvFile] = useState<File | null>(null);
 
   const semResult = calculateSemester(studentId);
@@ -57,7 +71,23 @@ export default function StudentForm({ existingSubmission }: Props) {
     if (!semResult.isValid) return setError(semResult.error ?? "Invalid Student ID.");
     if (!phone.trim()) return setError("Phone number is required.");
     if (!/^[\d+\-\s()]+$/.test(phone)) return setError("Enter a valid phone number.");
+    if (!department.trim()) return setError("Department is required.");
+    if (!cgpa.trim()) return setError("CGPA is required.");
+    
+    const parsedCgpa = parseFloat(cgpa);
+    if (isNaN(parsedCgpa) || parsedCgpa < 0 || parsedCgpa > 4.0) {
+      return setError("CGPA must be a decimal between 0.00 and 4.00.");
+    }
+    
+    if (!experienceDetails.trim() || experienceDetails.trim().length < 5) {
+      return setError("Experience details must be at least 5 characters.");
+    }
+    if (!whyAppropriate.trim() || whyAppropriate.trim().length < 5) {
+      return setError("Reasoning response must be at least 5 characters.");
+    }
     if (!position) return setError("Please select a position.");
+    if (!deviceConsent) return setError("You must consent to device information tracking.");
+    if (!cookieConsent) return setError("You must consent to cookie tracking.");
 
     setStep("upload");
   };
@@ -66,10 +96,40 @@ export default function StudentForm({ existingSubmission }: Props) {
     if (!cvFile) return setError("Please select a PDF file.");
     setError("");
 
+    // Generate or retrieve persistent browser fingerprint
+    let deviceId = "";
+    if (typeof window !== "undefined") {
+      try {
+        deviceId = localStorage.getItem("dev_fingerprint") || "";
+        if (!deviceId) {
+          deviceId = "dev_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          localStorage.setItem("dev_fingerprint", deviceId);
+        }
+        document.cookie = `dev_fingerprint=${deviceId}; path=/; max-age=31536000; SameSite=Lax`;
+      } catch (err) {
+        console.error("Local storage error:", err);
+      }
+    }
+
+    const browserInfo = {
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+      language: typeof navigator !== "undefined" ? navigator.language : "",
+      screen: typeof window !== "undefined" ? `${window.screen.width}x${window.screen.height}` : "",
+      platform: typeof navigator !== "undefined" ? navigator.platform : "",
+      timezone: typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "",
+      cookiesEnabled: typeof navigator !== "undefined" ? navigator.cookieEnabled : false,
+      deviceId,
+    };
+
     const fd = new FormData();
     fd.append("fullName", fullName);
     fd.append("studentId", studentId);
     fd.append("phone", phone);
+    fd.append("department", department);
+    fd.append("cgpa", cgpa);
+    fd.append("experienceDetails", experienceDetails);
+    fd.append("whyAppropriate", whyAppropriate);
+    fd.append("deviceInfo", JSON.stringify(browserInfo));
     fd.append("position", position);
     fd.append("cv", cvFile);
 
@@ -142,6 +202,22 @@ export default function StudentForm({ existingSubmission }: Props) {
       {step === "details" && (
         <form onSubmit={handleDetailsSubmit} className="glass-card animate-fade-in-up"
               style={{ padding: "32px" }}>
+          
+          {/* Security / Fraud Warning Box */}
+          <div className="glass-card" style={{
+            padding: "14px 16px", marginBottom: "28px",
+            borderColor: "rgba(239, 68, 68, 0.4)",
+            background: "rgba(239, 68, 68, 0.05)",
+            color: "#fca5a5"
+          }}>
+            <h4 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "6px", display: "flex", gap: "6px", alignItems: "center" }}>
+              <span>🛡️</span> Security & Verification Warning
+            </h4>
+            <p style={{ fontSize: "12.5px", lineHeight: 1.5, margin: 0, color: "var(--text-secondary)" }}>
+              To ensure recruitment integrity and prevent unauthorized submissions, device fingerprints, IP checks, and browser signatures are recorded. Submitting fraudulent applications under other students' names will result in immediate disqualification and reference to the university discipline committee.
+            </p>
+          </div>
+
           <h2 style={{ fontWeight: 700, fontSize: "22px", marginBottom: "8px" }}>
             Your Details
           </h2>
@@ -201,6 +277,26 @@ export default function StudentForm({ existingSubmission }: Props) {
               )}
             </div>
 
+            {/* Department */}
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 600,
+                            color: "var(--text-secondary)", marginBottom: "8px" }}>
+                Department *
+              </label>
+              <input className="input-field" type="text" placeholder="e.g. CSE / EEE / BBA"
+                value={department} onChange={e => setDepartment(e.target.value)} required />
+            </div>
+
+            {/* CGPA */}
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 600,
+                            color: "var(--text-secondary)", marginBottom: "8px" }}>
+                Current CGPA *
+              </label>
+              <input className="input-field" type="number" step="0.01" min="0.00" max="4.00" placeholder="e.g. 3.85"
+                value={cgpa} onChange={e => setCgpa(e.target.value)} required />
+            </div>
+
             {/* Phone */}
             <div>
               <label style={{ display: "block", fontSize: "13px", fontWeight: 600,
@@ -234,6 +330,78 @@ export default function StudentForm({ existingSubmission }: Props) {
                 }}>▼</div>
               </div>
             </div>
+
+            {/* Experience text area */}
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 600,
+                            color: "var(--text-secondary)", marginBottom: "6px" }}>
+                Are you currently or previously in any position of any club? Provide details *
+              </label>
+              <textarea
+                className="input-field"
+                style={{ minHeight: "100px", resize: "vertical", fontFamily: "inherit", fontSize: "14px", lineHeight: "1.5" }}
+                placeholder="List the club name, role held, duration, and details of responsibilities..."
+                value={experienceDetails}
+                onChange={e => setExperienceDetails(e.target.value)}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  alert("Copy-paste is disabled for security verification purposes. Please type your response.");
+                }}
+                required
+              />
+              <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+                🚫 Copy-paste is disabled. Please write details manually.
+              </p>
+            </div>
+
+            {/* Why Appropriate text area */}
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 600,
+                            color: "var(--text-secondary)", marginBottom: "6px" }}>
+                Why do you think you are appropriate for this post? *
+              </label>
+              <textarea
+                className="input-field"
+                style={{ minHeight: "100px", resize: "vertical", fontFamily: "inherit", fontSize: "14px", lineHeight: "1.5" }}
+                placeholder="Explain why you are the best fit, highlighting relevant leadership skills and dedication..."
+                value={whyAppropriate}
+                onChange={e => setWhyAppropriate(e.target.value)}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  alert("Copy-paste is disabled for security verification purposes. Please type your response.");
+                }}
+                required
+              />
+              <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+                🚫 Copy-paste is disabled. Please write details manually.
+              </p>
+            </div>
+
+            {/* Security and Tracking Consents */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "10px" }}>
+              <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "13px", color: "var(--text-secondary)", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={deviceConsent}
+                  onChange={e => setDeviceConsent(e.target.checked)}
+                  style={{ marginTop: "3px", cursor: "pointer" }}
+                  required
+                />
+                <span>I consent to the collection and processing of my device, browser, and network signature logs for security audit purposes. *</span>
+              </label>
+
+              <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "13px", color: "var(--text-secondary)", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={cookieConsent}
+                  onChange={e => setCookieConsent(e.target.checked)}
+                  style={{ marginTop: "3px", cursor: "pointer" }}
+                  required
+                />
+                <span>I agree to allow persistent verification cookies to help validate and identify duplicate application submissions. *</span>
+              </label>
+            </div>
+
           </div>
 
           {/* Info box: semester priority */}
