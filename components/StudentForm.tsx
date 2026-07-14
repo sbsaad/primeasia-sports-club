@@ -12,6 +12,7 @@ type Step = "details" | "upload" | "done";
 
 interface Props {
   existingSubmission?: {
+    id: string;
     filename: string;
     blobUrl: string;
     uploadedAt: Date;
@@ -293,7 +294,7 @@ export default function StudentForm({ existingSubmission }: Props) {
       {step === "done" && (
         <SuccessCard
           filename={result?.success ? result.filename : existingSubmission?.filename ?? ""}
-          blobUrl={result?.success ? result.blobUrl : existingSubmission?.blobUrl ?? ""}
+          submissionId={result?.success ? result.submissionId : existingSubmission?.id ?? ""}
           semester={result?.success ? result.semester : existingSubmission?.semester ?? 0}
           position={position || (existingSubmission?.position ?? "")}
           onReplace={handleReplace}

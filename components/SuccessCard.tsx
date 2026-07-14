@@ -5,13 +5,13 @@ import { getSemesterLabel } from "@/lib/semester";
 
 interface Props {
   filename: string;
-  blobUrl: string;
+  submissionId: string;
   semester: number;
   position: string;
   onReplace: () => void;
 }
 
-export default function SuccessCard({ filename, blobUrl, semester, position, onReplace }: Props) {
+export default function SuccessCard({ filename, submissionId, semester, position, onReplace }: Props) {
   return (
     <div className="animate-fade-in-up" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
@@ -64,7 +64,7 @@ export default function SuccessCard({ filename, blobUrl, semester, position, onR
         </div>
 
         <div style={{ display: "flex", gap: "10px", marginTop: "20px", flexWrap: "wrap" }}>
-          <a href={blobUrl} target="_blank" rel="noopener noreferrer" className="btn-outline">
+          <a href={`/api/cv/${submissionId}`} target="_blank" rel="noopener noreferrer" className="btn-outline">
             View CV ↗
           </a>
           <button onClick={onReplace} className="btn-ghost">

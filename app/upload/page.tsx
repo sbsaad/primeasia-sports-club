@@ -33,6 +33,7 @@ export default async function UploadPage() {
         </div>
 
         <StudentForm existingSubmission={existingSubmission ? {
+          id: existingSubmission.id,
           filename: existingSubmission.filename,
           blobUrl: existingSubmission.blobUrl,
           uploadedAt: existingSubmission.uploadedAt,

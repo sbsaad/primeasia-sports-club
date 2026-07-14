@@ -10,7 +10,7 @@ import { calculateSemester } from "@/lib/semester";
 import { revalidatePath } from "next/cache";
 
 export type SubmitResult =
-  | { success: true; filename: string; blobUrl: string; semester: number }
+  | { success: true; filename: string; submissionId: string; semester: number }
   | { success: false; error: string };
 
 export async function submitCV(formData: FormData): Promise<SubmitResult> {
@@ -85,12 +85,13 @@ export async function submitCV(formData: FormData): Promise<SubmitResult> {
   }
 
   // Upsert submission (one per user — delete old, insert new)
+  let submissionId = "";
   try {
     await db
       .delete(cvSubmissions)
       .where(eq(cvSubmissions.userId, dbUser.id));
 
-    await db.insert(cvSubmissions).values({
+    const inserted = await db.insert(cvSubmissions).values({
       userId: dbUser.id,
       fullName,
       studentId,
@@ -99,7 +100,9 @@ export async function submitCV(formData: FormData): Promise<SubmitResult> {
       semester: semResult.semester,
       blobUrl,
       filename: file.name,
-    });
+    }).returning({ id: cvSubmissions.id });
+    
+    submissionId = inserted[0]?.id || "";
   } catch (err) {
     console.error("DB error:", err);
     return { success: false, error: "Failed to save submission. Please try again." };
@@ -111,7 +114,7 @@ export async function submitCV(formData: FormData): Promise<SubmitResult> {
   return {
     success: true,
     filename: file.name,
-    blobUrl,
+    submissionId,
     semester: semResult.semester,
   };
 }

@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { cvSubmissions, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import JSZip from "jszip";
+import { get } from "@vercel/blob";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")
@@ -92,12 +93,17 @@ export async function GET() {
 
       // Fetch CV PDF from Vercel Blob
       try {
-        const res = await fetch(row.blobUrl);
-        if (res.ok) {
-          const pdfBuffer = await res.arrayBuffer();
+        const result = await get(row.blobUrl, {
+          access: "private",
+          token: process.env.BLOB_READ_WRITE_TOKEN,
+        });
+        if (result) {
+          const { stream } = result;
+          const pdfBuffer = await new Response(stream).arrayBuffer();
           folder.file(`${safeName}.pdf`, pdfBuffer);
         }
-      } catch {
+      } catch (err) {
+        console.error("ZIP download fetch error for:", row.fullName, err);
         // Skip if fetch fails; still include txt
       }
 

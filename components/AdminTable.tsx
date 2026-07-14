@@ -213,7 +213,7 @@ export default function AdminTable({ rows }: { rows: SubmissionRow[] }) {
                     </td>
                     <td>
                       <a
-                        href={row.blobUrl}
+                        href={`/api/cv/${row.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="btn-outline"
