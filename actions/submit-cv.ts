@@ -25,12 +25,14 @@ export async function submitCV(formData: FormData): Promise<SubmitResult> {
     const startSetting = await db.select().from(settings).where(eq(settings.key, "application_start")).limit(1);
     const endSetting = await db.select().from(settings).where(eq(settings.key, "application_end")).limit(1);
     
-    if (startSetting[0] && endSetting[0]) {
+    if (startSetting[0]?.value && endSetting[0]?.value) {
       const startDate = new Date(startSetting[0].value);
       const endDate = new Date(endSetting[0].value);
       if (now < startDate || now > endDate) {
         return { success: false, error: "Recruitment is currently closed. Applications are not being accepted at this time." };
       }
+    } else {
+      return { success: false, error: "Recruitment is currently closed (dates not set)." };
     }
   } catch (err) {
     console.error("Failed to check application dates setting:", err);

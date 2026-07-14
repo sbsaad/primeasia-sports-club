@@ -45,11 +45,6 @@ export default function StudentForm({ existingSubmission }: Props) {
   const [position, setPosition] = useState<Position | "">(
     (existingSubmission?.position as Position) ?? ""
   );
-  
-  // Consents
-  const [deviceConsent, setDeviceConsent] = useState(false);
-  const [cookieConsent, setCookieConsent] = useState(false);
-
   const [cvFile, setCvFile] = useState<File | null>(null);
 
   const semResult = calculateSemester(studentId);
@@ -86,8 +81,6 @@ export default function StudentForm({ existingSubmission }: Props) {
       return setError("Reasoning response must be at least 5 characters.");
     }
     if (!position) return setError("Please select a position.");
-    if (!deviceConsent) return setError("You must consent to device information tracking.");
-    if (!cookieConsent) return setError("You must consent to cookie tracking.");
 
     setStep("upload");
   };
@@ -343,15 +336,8 @@ export default function StudentForm({ existingSubmission }: Props) {
                 placeholder="List the club name, role held, duration, and details of responsibilities..."
                 value={experienceDetails}
                 onChange={e => setExperienceDetails(e.target.value)}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  alert("Copy-paste is disabled for security verification purposes. Please type your response.");
-                }}
                 required
               />
-              <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
-                🚫 Copy-paste is disabled. Please write details manually.
-              </p>
             </div>
 
             {/* Why Appropriate text area */}
@@ -375,31 +361,6 @@ export default function StudentForm({ existingSubmission }: Props) {
               <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
                 🚫 Copy-paste is disabled. Please write details manually.
               </p>
-            </div>
-
-            {/* Security and Tracking Consents */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "10px" }}>
-              <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "13px", color: "var(--text-secondary)", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={deviceConsent}
-                  onChange={e => setDeviceConsent(e.target.checked)}
-                  style={{ marginTop: "3px", cursor: "pointer" }}
-                  required
-                />
-                <span>I consent to the collection and processing of my device, browser, and network signature logs for security audit purposes. *</span>
-              </label>
-
-              <label style={{ display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "13px", color: "var(--text-secondary)", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={cookieConsent}
-                  onChange={e => setCookieConsent(e.target.checked)}
-                  style={{ marginTop: "3px", cursor: "pointer" }}
-                  required
-                />
-                <span>I agree to allow persistent verification cookies to help validate and identify duplicate application submissions. *</span>
-              </label>
             </div>
 
           </div>

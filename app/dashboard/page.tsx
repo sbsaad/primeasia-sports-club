@@ -24,7 +24,7 @@ export default async function DashboardPage() {
   const dates = await getRecruitmentDates();
   const now = new Date();
   let recruitmentPeriodLabel = "Recruitment Period Not Set";
-  let isRecruitmentClosed = false;
+  let isRecruitmentClosed = true;
   if (dates.start && dates.end) {
     const start = new Date(dates.start);
     const end = new Date(dates.end);

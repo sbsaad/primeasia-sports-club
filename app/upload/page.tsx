@@ -21,7 +21,7 @@ export default async function UploadPage() {
   // Date check
   const dates = await getRecruitmentDates();
   const now = new Date();
-  let isRecruitmentClosed = false;
+  let isRecruitmentClosed = true;
   if (dates.start && dates.end) {
     const start = new Date(dates.start);
     const end = new Date(dates.end);
