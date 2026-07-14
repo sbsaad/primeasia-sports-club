@@ -123,12 +123,9 @@ export default async function DashboardPage() {
         {/* Quick actions */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
           <Link href="/upload" style={{ textDecoration: "none" }}>
-            <div className="glass-card glow-border" style={{
-              padding: "22px", cursor: "pointer", transition: "transform 0.2s"
-            }}
-              onMouseEnter={e => (e.currentTarget.style.transform = "translateY(-3px)")}
-              onMouseLeave={e => (e.currentTarget.style.transform = "translateY(0)")}
-            >
+            <div className="glass-card glow-border transition-transform duration-200 hover:-translate-y-1" style={{
+              padding: "22px", cursor: "pointer"
+            }}>
               <div style={{ fontSize: "28px", marginBottom: "10px" }}>
                 {submission ? "✏️" : "📝"}
               </div>
@@ -143,8 +140,8 @@ export default async function DashboardPage() {
 
           {isAdmin && (
             <Link href="/admin" style={{ textDecoration: "none" }}>
-              <div className="glass-card glow-border" style={{
-                padding: "22px", cursor: "pointer", transition: "transform 0.2s",
+              <div className="glass-card glow-border transition-transform duration-200 hover:-translate-y-1" style={{
+                padding: "22px", cursor: "pointer",
                 borderColor: "rgba(201, 162, 39, 0.3)"
               }}>
                 <div style={{ fontSize: "28px", marginBottom: "10px" }}>⚙️</div>
