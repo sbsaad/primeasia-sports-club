@@ -163,7 +163,7 @@ export async function GET() {
   return new NextResponse(new Blob([Buffer.from(zipBuffer)], { type: "application/zip" }), {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="primeasia_sports_club_cvs_${Date.now()}.zip"`,
+      "Content-Disposition": `attachment; filename="PaUSC_All_Applicants_${Date.now()}.zip"`,
     },
   });
 }

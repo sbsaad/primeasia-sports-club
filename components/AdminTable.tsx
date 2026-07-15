@@ -214,7 +214,7 @@ export default function AdminTable({ rows, initialDates }: Props) {
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `primeasia_sports_club_cvs_${Date.now()}.zip`;
+      a.download = `PaUSC_All_Applicants_${Date.now()}.zip`;
       a.click();
       URL.revokeObjectURL(url);
 

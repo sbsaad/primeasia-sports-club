@@ -46,6 +46,18 @@ export default function StudentForm({ existingSubmission }: Props) {
     (existingSubmission?.position as Position) ?? ""
   );
   const [cvFile, setCvFile] = useState<File | null>(null);
+  const [noPriorClub, setNoPriorClub] = useState(
+    existingSubmission?.experienceDetails === "I wasn't in any club committee before."
+  );
+
+  const handleNoPriorClubChange = (checked: boolean) => {
+    setNoPriorClub(checked);
+    if (checked) {
+      setExperienceDetails("I wasn't in any club committee before.");
+    } else {
+      setExperienceDetails("");
+    }
+  };
 
   const semResult = calculateSemester(studentId);
 
@@ -57,39 +69,49 @@ export default function StudentForm({ existingSubmission }: Props) {
     setCvFile(null);
   };
 
+  const triggerError = (msg: string) => {
+    setError(msg);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   const handleDetailsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!fullName.trim()) return setError("Full name is required.");
-    if (!studentId.trim()) return setError("Student ID is required.");
-    if (!semResult.isValid) return setError(semResult.error ?? "Invalid Student ID.");
-    if (!phone.trim()) return setError("Phone number is required.");
-    if (!/^[\d+\-\s()]+$/.test(phone)) return setError("Enter a valid phone number.");
-    if (!department.trim()) return setError("Department is required.");
-    if (!cgpa.trim()) return setError("CGPA is required.");
+    if (!fullName.trim()) return triggerError("Full name is required.");
+    if (!studentId.trim()) return triggerError("Student ID is required.");
+    if (!semResult.isValid) return triggerError(semResult.error ?? "Invalid Student ID.");
+    if (!phone.trim()) return triggerError("Phone number is required.");
+    if (!/^[\d+\-\s()]+$/.test(phone)) return triggerError("Enter a valid phone number.");
+    if (!department.trim()) return triggerError("Department is required.");
+    if (!cgpa.trim()) return triggerError("CGPA is required.");
     
     const parsedCgpa = parseFloat(cgpa);
     if (isNaN(parsedCgpa) || parsedCgpa < 0 || parsedCgpa > 4.0) {
-      return setError("CGPA must be a decimal between 0.00 and 4.00.");
+      return triggerError("CGPA must be a decimal between 0.00 and 4.00.");
     }
     if (parsedCgpa < 2.5) {
-      return setError("You cannot apply because the minimum CGPA requirement is 2.5.");
+      return triggerError("You cannot apply because the minimum CGPA requirement is 2.5.");
     }
     
     if (!experienceDetails.trim() || experienceDetails.trim().length < 5) {
-      return setError("Experience details must be at least 5 characters.");
+      return triggerError("Experience details must be at least 5 characters.");
     }
     if (!whyAppropriate.trim() || whyAppropriate.trim().length < 5) {
-      return setError("Reasoning response must be at least 5 characters.");
+      return triggerError("Reasoning response must be at least 5 characters.");
     }
-    if (!position) return setError("Please select a position.");
+    if (!position) return triggerError("Please select a position.");
 
     setStep("upload");
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const handleUploadSubmit = () => {
-    if (!cvFile) return setError("Please select a PDF file.");
+    if (!cvFile) return triggerError("Please select a PDF file.");
     setError("");
 
     // Generate or retrieve persistent browser fingerprint
@@ -135,7 +157,7 @@ export default function StudentForm({ existingSubmission }: Props) {
         setResult(res);
         setStep("done");
       } else {
-        setError(res.error);
+        triggerError(res.error);
       }
     });
   };
@@ -228,7 +250,7 @@ export default function StudentForm({ existingSubmission }: Props) {
                             color: "var(--text-secondary)", marginBottom: "8px" }}>
                 Full Name *
               </label>
-              <input className="input-field" type="text" placeholder="e.g. Md. Saad Ahmed"
+              <input className="input-field" type="text" placeholder="e.g. Sahal Bin Saad"
                 value={fullName} onChange={e => setFullName(e.target.value)} required />
             </div>
 
@@ -333,12 +355,25 @@ export default function StudentForm({ existingSubmission }: Props) {
                             color: "var(--text-secondary)", marginBottom: "6px" }}>
                 Are you currently or previously in any position of any club? Provide details *
               </label>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                <input 
+                  type="checkbox" 
+                  id="noPriorClub"
+                  checked={noPriorClub}
+                  onChange={e => handleNoPriorClubChange(e.target.checked)}
+                  style={{ cursor: "pointer", accentColor: "var(--gold)", width: "16px", height: "16px" }}
+                />
+                <label htmlFor="noPriorClub" style={{ fontSize: "13px", color: "var(--text-secondary)", cursor: "pointer", userSelect: "none" }}>
+                  I wasn't in any club committee before
+                </label>
+              </div>
               <textarea
                 className="input-field"
                 style={{ minHeight: "100px", resize: "vertical", fontFamily: "inherit", fontSize: "14px", lineHeight: "1.5" }}
                 placeholder="List the club name, role held, duration, and details of responsibilities..."
                 value={experienceDetails}
                 onChange={e => setExperienceDetails(e.target.value)}
+                disabled={noPriorClub}
                 required
               />
             </div>
