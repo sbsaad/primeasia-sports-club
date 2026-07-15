@@ -2,6 +2,7 @@ import { auth, signIn } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import { getRecruitmentDates } from "@/actions/admin";
+import CountdownTimer from "@/components/CountdownTimer";
 
 export default async function LandingPage() {
   const session = await auth();
@@ -15,7 +16,7 @@ export default async function LandingPage() {
     const start = new Date(dates.start);
     const end = new Date(dates.end);
     isRecruitmentClosed = now < start || now > end;
-    recruitmentPeriodLabel = `Recruitment Window: ${start.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} to ${end.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
+    recruitmentPeriodLabel = `Recruitment Window: ${start.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" })} to ${end.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" })}`;
   }
 
   return (
@@ -97,6 +98,8 @@ export default async function LandingPage() {
           }}>
             <span>📅 {recruitmentPeriodLabel}</span>
           </div>
+
+          <CountdownTimer startDateStr={dates.start || ""} endDateStr={dates.end || ""} />
 
           <p style={{
             fontSize: "clamp(1rem, 2.5vw, 1.2rem)",

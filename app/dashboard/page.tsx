@@ -29,7 +29,7 @@ export default async function DashboardPage() {
     const start = new Date(dates.start);
     const end = new Date(dates.end);
     isRecruitmentClosed = now < start || now > end;
-    recruitmentPeriodLabel = `Recruitment Window: ${start.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} to ${end.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
+    recruitmentPeriodLabel = `Recruitment Window: ${start.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" })} to ${end.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" })}`;
   }
 
   return (
@@ -112,7 +112,7 @@ export default async function DashboardPage() {
                 {
                   label: "Submitted",
                   value: new Date(submission.uploadedAt).toLocaleDateString("en-GB",
-                    { day: "2-digit", month: "short", year: "numeric" }),
+                    { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Dhaka" }),
                   icon: "📅"
                 },
               ].map(item => (
