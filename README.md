@@ -56,7 +56,7 @@ cp .env.example .env.local
 5. Set **Application type** to "Web application"
 6. Add **Authorized redirect URIs**:
    - Development: `http://localhost:3000/api/auth/callback/google`
-   - Production: `https://your-vercel-domain.vercel.app/api/auth/callback/google`
+   - Production: `https://pausc.vercel.app/api/auth/callback/google`
 7. Copy the **Client ID** and **Client Secret** into your `.env.local`
 
 ### Neon Postgres Database
