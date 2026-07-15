@@ -5,7 +5,7 @@ import { useState, useTransition, useRef } from "react";
 import { calculateSemester, getSemesterLabel } from "@/lib/semester";
 import { POSITIONS, type Position } from "@/lib/validations";
 import { submitCVWithUrl, type SubmitResult } from "@/actions/submit-cv";
-import { upload } from "@vercel/blob/client";
+import { put } from "@vercel/blob/client";
 import CVUploadZone from "./CVUploadZone";
 import SuccessCard from "./SuccessCard";
 
@@ -147,18 +147,34 @@ export default function StudentForm({ existingSubmission }: Props) {
 
     startTransition(async () => {
       try {
-        // Step 1 — Upload PDF directly from browser to Vercel Blob CDN
-        // This bypasses the server entirely, so no Vercel timeout risk.
         const safeName = cvFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const blob = await upload(`cvs/${Date.now()}-${safeName}`, cvFile, {
+        const pathname = `cvs/${Date.now()}-${safeName}`;
+
+        // Step 1 — Get a short-lived client token from our server (tiny request, <100ms)
+        const tokenRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pathname }),
+        });
+        if (!tokenRes.ok) {
+          throw new Error("Could not get upload token. Please try again.");
+        }
+        const { clientToken } = await tokenRes.json() as { clientToken: string };
+
+        // Step 2 — PUT the file directly to Vercel Blob CDN using the token.
+        // This is a SINGLE PUT request — real linear progress, no resets, no callbacks.
+        const blob = await put(pathname, cvFile, {
           access: "public",
-          handleUploadUrl: "/api/upload",
+          token: clientToken,
+          contentType: "application/pdf",
           onUploadProgress: ({ percentage }) => {
-            setUploadProgress(Math.round(percentage));
+            setUploadProgress(Math.min(99, Math.round(percentage)));
           },
         });
 
-        // Step 2 — Send only the URL + form fields to the server (tiny payload, instant)
+        setUploadProgress(100);
+
+        // Step 3 — Send only the URL + fields to server (tiny, instant)
         setUploadPhase("saving");
         const res = await submitCVWithUrl({
           fullName,
@@ -182,7 +198,11 @@ export default function StudentForm({ existingSubmission }: Props) {
         }
       } catch (err) {
         console.error("Upload error:", err);
-        triggerError("Upload failed. Please check your connection and try again.");
+        triggerError(
+          err instanceof Error && err.message.includes("token")
+            ? "Could not start upload. Please refresh and try again."
+            : "Upload failed. Please check your connection and try again."
+        );
       } finally {
         setUploadPhase("idle");
         setUploadProgress(0);
