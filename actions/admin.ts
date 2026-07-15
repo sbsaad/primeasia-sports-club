@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { cvSubmissions, users, settings } from "@/lib/db/schema";
 import { eq, notInArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { del } from "@vercel/blob";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")
@@ -91,6 +92,39 @@ export async function resetRecruitmentData() {
     // If no admin emails set, do not delete users to avoid locking out
     await db.delete(users);
   }
+
+  revalidatePath("/");
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+  revalidatePath("/upload");
+}
+
+export async function deleteSubmission(id: string) {
+  const session = await auth();
+  requireAdmin(session?.user?.email);
+
+  // 1. Fetch submission to get blobUrl
+  const submissions = await db
+    .select({ blobUrl: cvSubmissions.blobUrl })
+    .from(cvSubmissions)
+    .where(eq(cvSubmissions.id, id))
+    .limit(1);
+
+  if (submissions.length === 0) {
+    throw new Error("Submission not found");
+  }
+
+  const blobUrl = submissions[0].blobUrl;
+
+  // 2. Delete from Vercel Blob
+  try {
+    await del(blobUrl, { token: process.env.BLOB_READ_WRITE_TOKEN });
+  } catch (err) {
+    console.error("Vercel Blob deletion error:", err);
+  }
+
+  // 3. Delete from DB
+  await db.delete(cvSubmissions).where(eq(cvSubmissions.id, id));
 
   revalidatePath("/");
   revalidatePath("/dashboard");

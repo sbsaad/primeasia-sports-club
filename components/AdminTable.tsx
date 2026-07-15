@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { getSemesterLabel } from "@/lib/semester";
-import { saveRecruitmentDates, resetRecruitmentData } from "@/actions/admin";
+import { saveRecruitmentDates, resetRecruitmentData, deleteSubmission } from "@/actions/admin";
 import JSZip from "jszip";
 
 export type SubmissionRow = {
@@ -43,6 +43,7 @@ interface Props {
 export default function AdminTable({ rows, initialDates }: Props) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState("All");
+  const [auditFilter, setAuditFilter] = useState<"all" | "flagged">("all");
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{
     current: number;
@@ -75,6 +76,19 @@ export default function AdminTable({ rows, initialDates }: Props) {
         const info = JSON.parse(r.deviceInfo);
         if (info.deviceId) {
           acc[info.deviceId] = (acc[info.deviceId] || 0) + 1;
+        }
+      }
+    } catch (e) {}
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Helper to count duplicate IP addresses (IP audit)
+  const ipCounts = rows.reduce((acc, r) => {
+    try {
+      if (r.deviceInfo) {
+        const info = JSON.parse(r.deviceInfo);
+        if (info.ip) {
+          acc[info.ip] = (acc[info.ip] || 0) + 1;
         }
       }
     } catch (e) {}
@@ -121,7 +135,22 @@ export default function AdminTable({ rows, initialDates }: Props) {
       r.userEmail.toLowerCase().includes(q) ||
       r.studentId.toLowerCase().includes(q);
     const matchPos = posFilter === "All" || r.position === posFilter;
-    return matchSearch && matchPos;
+
+    let matchAudit = true;
+    if (auditFilter === "flagged") {
+      let hasFlag = false;
+      try {
+        if (r.deviceInfo) {
+          const info = JSON.parse(r.deviceInfo);
+          const devDup = info.deviceId && deviceIdCounts[info.deviceId] > 1;
+          const ipDup = info.ip && ipCounts[info.ip] > 1;
+          hasFlag = !!(devDup || ipDup);
+        }
+      } catch (e) {}
+      matchAudit = hasFlag;
+    }
+
+    return matchSearch && matchPos && matchAudit;
   });
 
   const handleDownloadZip = async () => {
@@ -210,6 +239,58 @@ export default function AdminTable({ rows, initialDates }: Props) {
         };
       });
 
+      // Generate security audit report text
+      const flaggedSubmissions = targets.filter(row => {
+        let parsedDev: any = null;
+        try {
+          if (row.deviceInfo) parsedDev = JSON.parse(row.deviceInfo);
+        } catch(e){}
+        const isDeviceDup = parsedDev?.deviceId && deviceIdCounts[parsedDev.deviceId] > 1;
+        const isIpDup = parsedDev?.ip && ipCounts[parsedDev.ip] > 1;
+        return isDeviceDup || isIpDup;
+      });
+
+      let auditReportText = [
+        "===================================================",
+        "Primeasia University Sports Club Recruitment 2026",
+        "            SECURITY AUDIT REPORT",
+        "===================================================",
+        `Generated: ${new Date().toLocaleString("en-GB", { timeZone: "Asia/Dhaka" })} (Dhaka Time)`,
+        `Total Applications Analyzed: ${targets.length}`,
+        `Flagged Suspicious Applications: ${flaggedSubmissions.length}`,
+        "---------------------------------------------------",
+        "",
+      ].join("\n");
+
+      if (flaggedSubmissions.length === 0) {
+        auditReportText += "✅ No security anomalies or duplicate device fingerprints detected!\n";
+      } else {
+        auditReportText += "⚠️ FLAGGED SUBMISSIONS (Multiple applications from same device/IP):\n\n";
+        
+        flaggedSubmissions.forEach((row, idx) => {
+          let parsedDev: any = null;
+          try {
+            if (row.deviceInfo) parsedDev = JSON.parse(row.deviceInfo);
+          } catch(e){}
+          
+          const devId = parsedDev?.deviceId || "Unknown";
+          const ipAddr = parsedDev?.ip || "Unknown";
+          
+          auditReportText += [
+            `${idx + 1}. Candidate: ${row.fullName}`,
+            `   Email: ${row.userEmail}`,
+            `   Student ID: ${row.studentId}`,
+            `   Position: ${row.position}`,
+            `   Device Fingerprint ID: ${devId} (${deviceIdCounts[devId] || 1} submissions)`,
+            `   IP Address: ${ipAddr} (${ipCounts[ipAddr] || 1} submissions)`,
+            "   ---------------------------------------------",
+            "",
+          ].join("\n");
+        });
+      }
+
+      zip.file("security_audit_report.txt", auditReportText);
+
       const zipBlob = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement("a");
@@ -238,23 +319,6 @@ export default function AdminTable({ rows, initialDates }: Props) {
   };
 
   const buildDetailsText = (row: SubmissionRow): string => {
-    let deviceFormatted = "";
-    try {
-      if (row.deviceInfo) {
-        const dev = JSON.parse(row.deviceInfo);
-        deviceFormatted = [
-          `Device OS/Platform: ${dev.platform || "Unknown"}`,
-          `Screen Resolution: ${dev.screen || "Unknown"}`,
-          `Timezone          : ${dev.timezone || "Unknown"}`,
-          `Browser Locale    : ${dev.language || "Unknown"}`,
-          `User Agent        : ${dev.userAgent || "Unknown"}`,
-          `Browser Cookie ID : ${dev.deviceId || "N/A"}`
-        ].join("\n");
-      }
-    } catch (e) {
-      deviceFormatted = "Invalid JSON or raw: " + row.deviceInfo;
-    }
-
     return [
       "=== Primeasia University Sports Club ===",
       "Executive Committee Application Details",
@@ -277,12 +341,22 @@ export default function AdminTable({ rows, initialDates }: Props) {
       "=== Why Appropriate for Post ===",
       row.whyAppropriate || "None provided.",
       "",
-      "=== Security Auditing Device Telemetry ===",
-      deviceFormatted || "None collected.",
-      "",
       "========================================",
       "Generated by Primeasia University Sports Club Admin System",
     ].join("\n");
+  };
+
+  const handleDeleteSubmission = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete ${name}'s application? This will permanently delete their CV file and database entry.`)) {
+      return;
+    }
+    try {
+      await deleteSubmission(id);
+      alert(`Deleted ${name}'s application successfully.`);
+      window.location.reload();
+    } catch (err) {
+      alert("Failed to delete application: " + err);
+    }
   };
 
   const formatDate = (d: Date) =>
@@ -386,6 +460,44 @@ export default function AdminTable({ rows, initialDates }: Props) {
           ))}
         </div>
 
+        {/* Security Audit Filter */}
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+          <button
+            onClick={() => setAuditFilter("all")}
+            style={{
+              padding: "7px 14px",
+              borderRadius: "8px",
+              border: auditFilter === "all" ? "1px solid var(--gold)" : "1px solid rgba(255,255,255,0.08)",
+              background: auditFilter === "all" ? "rgba(201,162,39,0.15)" : "rgba(255,255,255,0.03)",
+              color: auditFilter === "all" ? "var(--gold)" : "var(--text-secondary)",
+              fontSize: "13px", fontWeight: 500, cursor: "pointer", transition: "all 0.2s",
+            }}
+          >
+            All Submissions
+          </button>
+          <button
+            onClick={() => setAuditFilter("flagged")}
+            style={{
+              padding: "7px 14px",
+              borderRadius: "8px",
+              border: auditFilter === "flagged" ? "1px solid #ef4444" : "1px solid rgba(255,255,255,0.08)",
+              background: auditFilter === "flagged" ? "rgba(239, 68, 68, 0.15)" : "rgba(255,255,255,0.03)",
+              color: auditFilter === "flagged" ? "#f87171" : "var(--text-secondary)",
+              fontSize: "13px", fontWeight: 500, cursor: "pointer", transition: "all 0.2s",
+            }}
+          >
+            ⚠️ Flagged Submissions ({rows.filter(row => {
+              let parsedDev: any = null;
+              try {
+                if (row.deviceInfo) parsedDev = JSON.parse(row.deviceInfo);
+              } catch(e){}
+              const devDup = parsedDev?.deviceId && deviceIdCounts[parsedDev.deviceId] > 1;
+              const ipDup = parsedDev?.ip && ipCounts[parsedDev.ip] > 1;
+              return devDup || ipDup;
+            }).length})
+          </button>
+        </div>
+
         <button
           className="btn-gold"
           onClick={handleDownloadZip}
@@ -450,7 +562,8 @@ export default function AdminTable({ rows, initialDates }: Props) {
                   try {
                     if (row.deviceInfo) parsedDev = JSON.parse(row.deviceInfo);
                   } catch(e){}
-                  const isSuspicious = parsedDev?.deviceId && deviceIdCounts[parsedDev.deviceId] > 1;
+                  const isDeviceSuspicious = parsedDev?.deviceId && deviceIdCounts[parsedDev.deviceId] > 1;
+                  const isIpSuspicious = parsedDev?.ip && ipCounts[parsedDev.ip] > 1;
 
                   return (
                     <tr key={row.id}>
@@ -468,11 +581,16 @@ export default function AdminTable({ rows, initialDates }: Props) {
                             }}>{row.fullName[0]}</div>
                           )}
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: "14px", display: "flex", alignItems: "center", gap: "6px" }}>
+                            <div style={{ fontWeight: 600, fontSize: "14px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
                               {row.fullName}
-                              {isSuspicious && (
+                              {isDeviceSuspicious && (
                                 <span title="Multiple submissions from same browser fingerprint" style={{ fontSize: "11px", background: "rgba(239,68,68,0.2)", color: "#f87171", padding: "1px 6px", borderRadius: "4px" }}>
                                   ⚠️ Shared Device
+                                </span>
+                              )}
+                              {isIpSuspicious && (
+                                <span title={`Multiple submissions from same IP: ${parsedDev.ip}`} style={{ fontSize: "11px", background: "rgba(245,158,11,0.2)", color: "#fbbf24", padding: "1px 6px", borderRadius: "4px" }}>
+                                  ⚠️ Shared IP
                                 </span>
                               )}
                             </div>
@@ -523,6 +641,20 @@ export default function AdminTable({ rows, initialDates }: Props) {
                           >
                             ↓ CV
                           </a>
+                          <button
+                            onClick={() => handleDeleteSubmission(row.id, row.fullName)}
+                            className="btn-ghost"
+                            style={{ 
+                              padding: "6px 12px", 
+                              fontSize: "12px", 
+                              whiteSpace: "nowrap",
+                              color: "var(--danger)",
+                              background: "rgba(239, 68, 68, 0.08)",
+                              borderColor: "rgba(239, 68, 68, 0.2)",
+                            }}
+                          >
+                            🗑️ Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -598,6 +730,7 @@ export default function AdminTable({ rows, initialDates }: Props) {
           if (selectedRow.deviceInfo) deviceParsed = JSON.parse(selectedRow.deviceInfo);
         } catch(e){}
         const hasDeviceWarning = deviceParsed?.deviceId && deviceIdCounts[deviceParsed.deviceId] > 1;
+        const hasIpWarning = deviceParsed?.ip && ipCounts[deviceParsed.ip] > 1;
 
         return (
           <div style={{
@@ -623,12 +756,23 @@ export default function AdminTable({ rows, initialDates }: Props) {
 
               {hasDeviceWarning && (
                 <div className="glass-card" style={{
-                  padding: "12px 16px", marginBottom: "20px",
+                  padding: "12px 16px", marginBottom: "12px",
                   borderColor: "rgba(239, 68, 68, 0.4)",
                   background: "rgba(239, 68, 68, 0.08)",
                   color: "#f87171", fontSize: "13px", display: "flex", gap: "8px", alignItems: "center"
                 }}>
                   <span>⚠️</span> <strong>Shared Device Warning:</strong> {deviceIdCounts[deviceParsed.deviceId]} applications have been submitted from this browser fingerprint!
+                </div>
+              )}
+
+              {hasIpWarning && (
+                <div className="glass-card" style={{
+                  padding: "12px 16px", marginBottom: "20px",
+                  borderColor: "rgba(245, 158, 11, 0.4)",
+                  background: "rgba(245, 158, 11, 0.08)",
+                  color: "#fbbf24", fontSize: "13px", display: "flex", gap: "8px", alignItems: "center"
+                }}>
+                  <span>⚠️</span> <strong>Shared IP Warning:</strong> {ipCounts[deviceParsed.ip]} applications have been submitted from this IP address ({deviceParsed.ip})!
                 </div>
               )}
 
@@ -680,6 +824,7 @@ export default function AdminTable({ rows, initialDates }: Props) {
                 <div style={{ fontSize: "12px", lineHeight: 1.5, background: "rgba(255,255,255,0.03)", padding: "16px", borderRadius: "10px", border: "1px solid var(--glass-border)", color: "var(--text-secondary)" }}>
                   {deviceParsed ? (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "8px" }}>
+                      <div><strong>IP Address:</strong> <span style={{ fontFamily: "monospace", color: "var(--gold)" }}>{deviceParsed.ip || "N/A"}</span></div>
                       <div><strong>Platform:</strong> {deviceParsed.platform || "Unknown"}</div>
                       <div><strong>Resolution:</strong> {deviceParsed.screen || "Unknown"}</div>
                       <div><strong>Timezone:</strong> {deviceParsed.timezone || "Unknown"}</div>

@@ -8,6 +8,7 @@ import { put } from "@vercel/blob";
 import { studentFormSchema } from "@/lib/validations";
 import { calculateSemester } from "@/lib/semester";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 
 export type SubmitResult =
   | { success: true; filename: string; submissionId: string; semester: number }
@@ -60,6 +61,22 @@ export async function submitCV(formData: FormData): Promise<SubmitResult> {
 
   const { fullName, studentId, phone, position, department, cgpa, experienceDetails, whyAppropriate } = parsed.data;
   const deviceInfo = (formData.get("deviceInfo") as string) || "{}";
+  
+  // Extract user IP address from headers
+  const reqHeaders = await headers();
+  const ip = reqHeaders.get("x-forwarded-for")?.split(",")[0].trim() || 
+             reqHeaders.get("x-real-ip") || 
+             "127.0.0.1";
+             
+  let deviceInfoObj = {};
+  try {
+    deviceInfoObj = JSON.parse(deviceInfo);
+  } catch (e) {}
+  
+  const updatedDeviceInfo = JSON.stringify({
+    ...deviceInfoObj,
+    ip,
+  });
 
   // Calculate semester
   const semResult = calculateSemester(studentId);
@@ -126,7 +143,7 @@ export async function submitCV(formData: FormData): Promise<SubmitResult> {
       cgpa,
       experienceDetails,
       whyAppropriate,
-      deviceInfo,
+      deviceInfo: updatedDeviceInfo,
       blobUrl,
       filename: file.name,
     }).returning({ id: cvSubmissions.id });
