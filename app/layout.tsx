@@ -12,12 +12,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Primeasia University Sports Club",
+  title: "Primeasia University Games and Sports Club",
   description:
-    "Apply for the Executive Committee of Primeasia University Sports Club. Sign in with your Google account to submit your application.",
-  keywords: ["Primeasia", "Sports Club", "University", "Executive Committee"],
+    "Apply for the Executive Committee of Primeasia University Games and Sports Club. Sign in with your Google account to submit your application.",
+  keywords: ["Primeasia", "Games and Sports Club", "University", "Executive Committee"],
   openGraph: {
-    title: "Primeasia University Sports Club",
+    title: "Primeasia University Games and Sports Club",
     description: "Join the Executive Committee — Apply Now",
     type: "website",
   },

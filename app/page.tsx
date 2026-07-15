@@ -35,7 +35,7 @@ export default async function LandingPage() {
               Primeasia University
             </div>
             <div style={{ fontSize: "11px", color: "var(--gold)", fontWeight: 600 }}>
-              Sports Club
+              Games and Sports Club
             </div>
           </div>
         </div>
@@ -84,7 +84,7 @@ export default async function LandingPage() {
           }}>
             <span className="gold-text">Primeasia University</span>
             <br />
-            <span style={{ color: "var(--text-primary)" }}>Sports Club</span>
+            <span style={{ color: "var(--text-primary)" }}>Games and Sports Club</span>
           </h1>
 
           {/* Recruitment Date Range Label */}
@@ -182,7 +182,7 @@ export default async function LandingPage() {
         borderTop: "1px solid var(--glass-border)",
         color: "var(--text-muted)", fontSize: "13px"
       }}>
-        © {new Date().getFullYear()} Primeasia University Sports Club. All rights reserved.
+        © {new Date().getFullYear()} Primeasia University Games and Sports Club. All rights reserved.
       </footer>
     </main>
   );

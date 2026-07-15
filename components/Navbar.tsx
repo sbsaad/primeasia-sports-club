@@ -38,7 +38,7 @@ export default function Navbar({ isAdmin }: { isAdmin?: boolean }) {
               Primeasia University
             </div>
             <div style={{ fontSize: "11px", color: "var(--gold)", fontWeight: 600 }}>
-              Sports Club
+              Games and Sports Club
             </div>
           </div>
         </Link>

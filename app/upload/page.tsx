@@ -56,7 +56,7 @@ export default async function UploadPage() {
               <p style={{ color: "var(--text-secondary)", fontSize: "15px", lineHeight: 1.6 }}>
                 {existingSubmission
                   ? "You can update your details or replace your CV below."
-                  : "Fill in your details and upload your CV to apply for the Sports Club Executive Committee."}
+                  : "Fill in your details and upload your CV to apply for the Games and Sports Club Executive Committee."}
               </p>
             </div>
 

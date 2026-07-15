@@ -1,6 +1,6 @@
-# Primeasia University Sports Club
+# Primeasia University Games and Sports Club
 
-A full-stack Next.js web app for the Primeasia University Sports Club Executive Committee recruitment process. Students sign in with Google, submit their details and CV, and admins can browse/download all applications.
+A full-stack Next.js web app for the Primeasia University Games and Sports Club Executive Committee recruitment process. Students sign in with Google, submit their details and CV, and admins can browse/download all applications.
 
 ---
 
@@ -201,4 +201,4 @@ Each `_details.txt` contains the student's full registration details (name, emai
 
 ## License
 
-MIT — Primeasia University Sports Club
+MIT — Primeasia University Games and Sports Club
