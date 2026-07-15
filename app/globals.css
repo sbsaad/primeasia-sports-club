@@ -370,3 +370,253 @@
   color: var(--text-muted);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* ===== WOW SPORTS UI ADDITIONS ===== */
+
+/* Shimmer border animation for hero glass card */
+@keyframes border-shimmer {
+  0%   { border-color: rgba(201, 162, 39, 0.15); box-shadow: 0 0 20px rgba(201,162,39,0.05); }
+  50%  { border-color: rgba(201, 162, 39, 0.5);  box-shadow: 0 0 40px rgba(201,162,39,0.15), 0 0 80px rgba(201,162,39,0.05); }
+  100% { border-color: rgba(201, 162, 39, 0.15); box-shadow: 0 0 20px rgba(201,162,39,0.05); }
+}
+
+/* Title glow pulse */
+@keyframes title-glow {
+  0%, 100% { text-shadow: 0 0 20px rgba(201,162,39,0.3), 0 0 60px rgba(201,162,39,0.1); }
+  50%       { text-shadow: 0 0 40px rgba(201,162,39,0.6), 0 0 80px rgba(201,162,39,0.25), 0 0 120px rgba(201,162,39,0.1); }
+}
+
+/* Float gentle bob */
+@keyframes float-bob {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+
+/* Scroll fade in from bottom */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Fast spin for decorative elements */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Stripe animated background (FIFA vibe) */
+@keyframes stripe-move {
+  from { background-position: 0 0; }
+  to   { background-position: 60px 60px; }
+}
+
+/* Counter tick */
+@keyframes count-tick {
+  0%   { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Marquee scroll */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Trophy bounce */
+@keyframes trophy-bounce {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50%       { transform: translateY(-8px) rotate(3deg); }
+}
+
+/* Animated gradient text */
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Classes */
+.animate-border-shimmer {
+  animation: border-shimmer 3s ease-in-out infinite;
+}
+.animate-title-glow {
+  animation: title-glow 3s ease-in-out infinite;
+}
+.animate-float-bob {
+  animation: float-bob 4s ease-in-out infinite;
+}
+.animate-slide-up {
+  animation: slide-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+.animate-trophy-bounce {
+  animation: trophy-bounce 2.5s ease-in-out infinite;
+}
+
+/* FIFA-themed gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #c9a227 0%, #e8c84e 40%, #ffffff 60%, #c9a227 100%);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 4s ease infinite;
+}
+
+/* Neon gold glow button */
+.btn-neon-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 40px;
+  font-size: 17px;
+  font-weight: 700;
+  border-radius: 50px;
+  cursor: pointer;
+  border: 2px solid var(--gold);
+  color: var(--navy);
+  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+  box-shadow:
+    0 0 20px rgba(201,162,39,0.4),
+    0 0 60px rgba(201,162,39,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+  transition: all 0.3s ease;
+  text-shadow: none;
+  position: relative;
+  overflow: hidden;
+}
+.btn-neon-gold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 60%);
+  border-radius: 50px;
+}
+.btn-neon-gold:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow:
+    0 0 30px rgba(201,162,39,0.6),
+    0 0 80px rgba(201,162,39,0.25),
+    0 8px 30px rgba(0,0,0,0.4);
+}
+.btn-neon-gold:active {
+  transform: translateY(0);
+}
+
+/* Sport card */
+.sport-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(201,162,39,0.12);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: default;
+}
+.sport-card:hover {
+  background: rgba(201,162,39,0.05);
+  border-color: rgba(201,162,39,0.35);
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.3), 0 0 20px rgba(201,162,39,0.08);
+}
+
+/* Stats counter card */
+.stat-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(201,162,39,0.1);
+  border-radius: 14px;
+  padding: 20px 24px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+.stat-card:hover {
+  border-color: rgba(201,162,39,0.3);
+  box-shadow: 0 0 20px rgba(201,162,39,0.08);
+}
+
+/* Hero glass container */
+.hero-glass {
+  background: rgba(10, 22, 40, 0.5);
+  border: 1px solid rgba(201, 162, 39, 0.2);
+  border-radius: 28px;
+  backdrop-filter: blur(20px);
+  padding: 48px 40px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(201,162,39,0.06) 0%, transparent 50%, rgba(79,142,247,0.03) 100%);
+  border-radius: 28px;
+  pointer-events: none;
+}
+
+/* World Cup badge */
+.worldcup-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.08));
+  border: 1px solid rgba(34,197,94,0.3);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4ade80;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  animation: border-shimmer 2s ease-in-out infinite;
+}
+
+/* Step cards for application flow */
+.step-flow-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 20px 16px;
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+}
+.step-flow-card:hover {
+  background: rgba(201,162,39,0.04);
+  border-color: rgba(201,162,39,0.2);
+  transform: translateY(-4px);
+}
+
+/* Scrolling marquee wrapper */
+.marquee-wrapper {
+  overflow: hidden;
+  width: 100%;
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+.marquee-inner {
+  display: flex;
+  white-space: nowrap;
+  animation: marquee 28s linear infinite;
+}
+.marquee-inner:hover {
+  animation-play-state: paused;
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-border-shimmer,
+  .animate-title-glow,
+  .animate-float-bob,
+  .animate-marquee,
+  .marquee-inner,
+  .animate-trophy-bounce,
+  .gradient-text {
+    animation: none !important;
+  }
+}
+
