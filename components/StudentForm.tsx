@@ -4,7 +4,8 @@
 import { useState, useTransition, useRef } from "react";
 import { calculateSemester, getSemesterLabel } from "@/lib/semester";
 import { POSITIONS, type Position } from "@/lib/validations";
-import { submitCV, type SubmitResult } from "@/actions/submit-cv";
+import { submitCVWithUrl, type SubmitResult } from "@/actions/submit-cv";
+import { upload } from "@vercel/blob/client";
 import CVUploadZone from "./CVUploadZone";
 import SuccessCard from "./SuccessCard";
 
@@ -33,6 +34,8 @@ export default function StudentForm({ existingSubmission }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [result, setResult] = useState<SubmitResult | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading" | "saving">("idle");
 
   // Form fields
   const [fullName, setFullName] = useState(existingSubmission?.fullName ?? "");
@@ -139,25 +142,50 @@ export default function StudentForm({ existingSubmission }: Props) {
       deviceId,
     };
 
-    const fd = new FormData();
-    fd.append("fullName", fullName);
-    fd.append("studentId", studentId);
-    fd.append("phone", phone);
-    fd.append("department", department);
-    fd.append("cgpa", cgpa);
-    fd.append("experienceDetails", experienceDetails);
-    fd.append("whyAppropriate", whyAppropriate);
-    fd.append("deviceInfo", JSON.stringify(browserInfo));
-    fd.append("position", position);
-    fd.append("cv", cvFile);
+    setUploadPhase("uploading");
+    setUploadProgress(0);
 
     startTransition(async () => {
-      const res = await submitCV(fd);
-      if (res.success) {
-        setResult(res);
-        setStep("done");
-      } else {
-        triggerError(res.error);
+      try {
+        // Step 1 — Upload PDF directly from browser to Vercel Blob CDN
+        // This bypasses the server entirely, so no Vercel timeout risk.
+        const safeName = cvFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const blob = await upload(`cvs/${Date.now()}-${safeName}`, cvFile, {
+          access: "public",
+          handleUploadUrl: "/api/upload",
+          onUploadProgress: ({ percentage }) => {
+            setUploadProgress(Math.round(percentage));
+          },
+        });
+
+        // Step 2 — Send only the URL + form fields to the server (tiny payload, instant)
+        setUploadPhase("saving");
+        const res = await submitCVWithUrl({
+          fullName,
+          studentId,
+          phone,
+          position,
+          department,
+          cgpa,
+          experienceDetails,
+          whyAppropriate,
+          deviceInfo: JSON.stringify(browserInfo),
+          blobUrl: blob.url,
+          filename: cvFile.name,
+        });
+
+        if (res.success) {
+          setResult(res);
+          setStep("done");
+        } else {
+          triggerError(res.error);
+        }
+      } catch (err) {
+        console.error("Upload error:", err);
+        triggerError("Upload failed. Please check your connection and try again.");
+      } finally {
+        setUploadPhase("idle");
+        setUploadProgress(0);
       }
     });
   };
@@ -437,9 +465,48 @@ export default function StudentForm({ existingSubmission }: Props) {
 
           <CVUploadZone file={cvFile} onFileChange={setCvFile} />
 
+          {/* Progress bar — shown during upload */}
+          {isPending && (
+            <div style={{ marginTop: "20px" }}>
+              <div style={{
+                display: "flex", justifyContent: "space-between",
+                fontSize: "12px", fontWeight: 600, marginBottom: "8px",
+                color: uploadPhase === "saving" ? "var(--gold)" : "var(--text-secondary)",
+              }}>
+                <span>
+                  {uploadPhase === "uploading"
+                    ? `⬆️ Uploading your CV... ${uploadProgress}%`
+                    : "💾 Saving your application..."}
+                </span>
+                {uploadPhase === "uploading" && (
+                  <span style={{ color: "var(--text-muted)" }}>{uploadProgress}%</span>
+                )}
+              </div>
+              <div style={{
+                width: "100%", height: "6px",
+                background: "rgba(255,255,255,0.06)",
+                borderRadius: "6px", overflow: "hidden",
+              }}>
+                <div style={{
+                  height: "100%",
+                  width: uploadPhase === "saving" ? "100%" : `${uploadProgress}%`,
+                  background: "linear-gradient(to right, var(--gold), var(--gold-light))",
+                  borderRadius: "6px",
+                  transition: "width 0.3s ease",
+                  boxShadow: "0 0 8px rgba(201,162,39,0.5)",
+                }} />
+              </div>
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "8px", textAlign: "center" }}>
+                {uploadPhase === "uploading"
+                  ? "Please keep this page open. Your file is uploading directly to our servers."
+                  : "Almost done! Saving your details..."}
+              </p>
+            </div>
+          )}
+
           <button
             className="btn-gold"
-            style={{ marginTop: "24px", width: "100%" }}
+            style={{ marginTop: "20px", width: "100%" }}
             onClick={handleUploadSubmit}
             disabled={!cvFile || isPending}
           >
@@ -450,12 +517,13 @@ export default function StudentForm({ existingSubmission }: Props) {
                   <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
                   <path d="M12 2a10 10 0 0 1 10 10" />
                 </svg>
-                Uploading...
+                {uploadPhase === "uploading" ? `Uploading... ${uploadProgress}%` : "Saving..."}
               </>
             ) : "Submit Application →"}
           </button>
         </div>
       )}
+
 
       {/* Step 3 — Done */}
       {step === "done" && (

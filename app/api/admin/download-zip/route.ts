@@ -143,7 +143,7 @@ export async function GET() {
   return new NextResponse(new Blob([Buffer.from(zipBuffer)], { type: "application/zip" }), {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="PaUSC_All_Applicants_${Date.now()}.zip"`,
+      "Content-Disposition": `attachment; filename="PaUGSC_All_Applicants_${Date.now()}.zip"`,
     },
   });
 }

@@ -14,6 +14,115 @@ export type SubmitResult =
   | { success: true; filename: string; submissionId: string; semester: number }
   | { success: false; error: string };
 
+export type SubmitWithUrlPayload = {
+  fullName: string;
+  studentId: string;
+  phone: string;
+  position: string;
+  department: string;
+  cgpa: string;
+  experienceDetails: string;
+  whyAppropriate: string;
+  deviceInfo: string;
+  blobUrl: string;
+  filename: string;
+};
+
+/**
+ * Slim server action used after client-side direct upload to Vercel Blob.
+ * Receives the blobUrl (string) instead of the raw File — no file transfer
+ * through the server, so no timeout risk on slow connections.
+ */
+export async function submitCVWithUrl(
+  payload: SubmitWithUrlPayload
+): Promise<SubmitResult> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: "Not authenticated." };
+  }
+
+  // Check active recruitment dates
+  const now = new Date();
+  try {
+    const startSetting = await db.select().from(settings).where(eq(settings.key, "application_start")).limit(1);
+    const endSetting = await db.select().from(settings).where(eq(settings.key, "application_end")).limit(1);
+    if (startSetting[0]?.value && endSetting[0]?.value) {
+      const startDate = new Date(startSetting[0].value);
+      const endDate = new Date(endSetting[0].value);
+      if (now < startDate || now > endDate) {
+        return { success: false, error: "Recruitment is currently closed. Applications are not being accepted at this time." };
+      }
+    } else {
+      return { success: false, error: "Recruitment is currently closed (dates not set)." };
+    }
+  } catch (err) {
+    console.error("Failed to check application dates setting:", err);
+  }
+
+  // Validate fields
+  const parsed = studentFormSchema.safeParse({
+    fullName: payload.fullName,
+    studentId: payload.studentId,
+    phone: payload.phone,
+    position: payload.position,
+    department: payload.department,
+    cgpa: payload.cgpa,
+    experienceDetails: payload.experienceDetails,
+    whyAppropriate: payload.whyAppropriate,
+  });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues.map((e: { message: string }) => e.message).join(", ") };
+  }
+
+  const { fullName, studentId, phone, position, department, cgpa, experienceDetails, whyAppropriate } = parsed.data;
+
+  // Inject IP
+  const reqHeaders = await headers();
+  const ip = reqHeaders.get("x-forwarded-for")?.split(",")[0].trim() || reqHeaders.get("x-real-ip") || "127.0.0.1";
+  let deviceInfoObj = {};
+  try { deviceInfoObj = JSON.parse(payload.deviceInfo); } catch (e) {}
+  const updatedDeviceInfo = JSON.stringify({ ...deviceInfoObj, ip });
+
+  // Semester check
+  const semResult = calculateSemester(studentId);
+  if (!semResult.isValid) {
+    return { success: false, error: semResult.error ?? "Invalid student ID." };
+  }
+
+  // Find user
+  const dbUsers = await db.select().from(users).where(eq(users.email, session.user.email)).limit(1);
+  if (dbUsers.length === 0) {
+    return { success: false, error: "User not found. Please sign in again." };
+  }
+  const dbUser = dbUsers[0];
+
+  // Upsert submission
+  let submissionId = "";
+  try {
+    await db.delete(cvSubmissions).where(eq(cvSubmissions.userId, dbUser.id));
+    const inserted = await db.insert(cvSubmissions).values({
+      userId: dbUser.id,
+      fullName, studentId, phone, position,
+      semester: semResult.semester,
+      department, cgpa, experienceDetails, whyAppropriate,
+      deviceInfo: updatedDeviceInfo,
+      blobUrl: payload.blobUrl,
+      filename: payload.filename,
+    }).returning({ id: cvSubmissions.id });
+    submissionId = inserted[0]?.id || "";
+  } catch (err) {
+    console.error("DB error:", err);
+    return { success: false, error: "Failed to save submission. Please try again." };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+
+  return { success: true, filename: payload.filename, submissionId, semester: semResult.semester };
+}
+
+
+
 export async function submitCV(formData: FormData): Promise<SubmitResult> {
   const session = await auth();
   if (!session?.user?.email) {

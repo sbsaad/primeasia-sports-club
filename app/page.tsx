@@ -224,7 +224,7 @@ export default async function LandingPage() {
           textAlign: "center", fontSize: "clamp(1.5rem, 3.5vw, 2.2rem)",
           fontWeight: 800, marginBottom: "8px", color: "var(--text-primary)"
         }}>
-          PaUSC by the <span className="gradient-text">Numbers</span>
+          PaUGSC by the <span className="gradient-text">Numbers</span>
         </h2>
         <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "14px", marginBottom: "40px" }}>
           A proud legacy of sports excellence at Primeasia University
@@ -321,7 +321,7 @@ export default async function LandingPage() {
           textAlign: "center", fontSize: "clamp(1.5rem, 3.5vw, 2.2rem)",
           fontWeight: 800, marginBottom: "40px", color: "var(--text-primary)"
         }}>
-          Why <span className="gradient-text">PaUSC?</span>
+          Why <span className="gradient-text">PaUGSC?</span>
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "20px" }}>
           {[
