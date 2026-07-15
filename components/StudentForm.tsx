@@ -73,6 +73,9 @@ export default function StudentForm({ existingSubmission }: Props) {
     if (isNaN(parsedCgpa) || parsedCgpa < 0 || parsedCgpa > 4.0) {
       return setError("CGPA must be a decimal between 0.00 and 4.00.");
     }
+    if (parsedCgpa < 2.5) {
+      return setError("You cannot apply because the minimum CGPA requirement is 2.5.");
+    }
     
     if (!experienceDetails.trim() || experienceDetails.trim().length < 5) {
       return setError("Experience details must be at least 5 characters.");

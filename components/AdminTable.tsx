@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import { getSemesterLabel } from "@/lib/semester";
 import { saveRecruitmentDates, resetRecruitmentData } from "@/actions/admin";
+import JSZip from "jszip";
 
 export type SubmissionRow = {
   id: string;
@@ -43,6 +44,13 @@ export default function AdminTable({ rows, initialDates }: Props) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState("All");
   const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<{
+    current: number;
+    total: number;
+    name: string;
+    status: "idle" | "starting" | "downloading" | "zipping" | "success" | "error";
+  } | null>(null);
+  const cancelRef = useRef<boolean>(false);
 
   // Date range picker states
   const [startDate, setStartDate] = useState(initialDates?.start ? new Date(initialDates.start).toISOString().slice(0, 16) : "");
@@ -117,22 +125,164 @@ export default function AdminTable({ rows, initialDates }: Props) {
   });
 
   const handleDownloadZip = async () => {
+    const targets = filtered;
+    if (targets.length === 0) return;
+
     setDownloading(true);
+    cancelRef.current = false;
+    setDownloadProgress({
+      current: 0,
+      total: targets.length,
+      name: "Initializing...",
+      status: "starting",
+    });
+
     try {
-      const res = await fetch("/api/admin/download-zip");
-      if (!res.ok) throw new Error("Failed to generate ZIP");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      const zip = new JSZip();
+
+      // Download in batches of 5 to avoid overloading connections
+      const BATCH_SIZE = 5;
+      for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+        if (cancelRef.current) {
+          throw new Error("Cancelled by user");
+        }
+
+        const batch = targets.slice(i, i + BATCH_SIZE);
+
+        await Promise.all(
+          batch.map(async (row) => {
+            if (cancelRef.current) return;
+
+            setDownloadProgress((prev) => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                current: prev.current + 1,
+                name: `${row.fullName} (${row.position})`,
+                status: "downloading",
+              };
+            });
+
+            const positionFolderName = row.position.replace(/\s+/g, "_");
+            const safeName = row.fullName
+              .replace(/[^a-zA-Z0-9\s_-]/g, "")
+              .trim()
+              .replace(/\s+/g, "_");
+
+            // 1. Fetch CV PDF
+            try {
+              const res = await fetch(`/api/cv/${row.id}`);
+              if (res.ok) {
+                const pdfBuffer = await res.arrayBuffer();
+                zip.file(`${positionFolderName}/${safeName}/${safeName}.pdf`, pdfBuffer);
+              } else {
+                console.error(`Failed to download CV for ${row.fullName}: ${res.statusText}`);
+                zip.file(
+                  `${positionFolderName}/${safeName}/CV_MISSING_ERROR.txt`,
+                  `Failed to download CV file from Vercel Blob storage. Status code: ${res.status}\nURL: ${row.blobUrl}`
+                );
+              }
+            } catch (err) {
+              console.error(`Error downloading CV for ${row.fullName}:`, err);
+              zip.file(
+                `${positionFolderName}/${safeName}/CV_DOWNLOAD_FAILED.txt`,
+                `Failed to download CV file due to network error:\n${err instanceof Error ? err.message : String(err)}`
+              );
+            }
+
+            // 2. Add details text file
+            const detailsTxt = buildDetailsText(row);
+            zip.file(`${positionFolderName}/${safeName}/${safeName}_details.txt`, detailsTxt);
+          })
+        );
+      }
+
+      if (cancelRef.current) {
+        throw new Error("Cancelled by user");
+      }
+
+      setDownloadProgress((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          name: "Generating ZIP archive...",
+          status: "zipping",
+        };
+      });
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `primeasia_sports_club_cvs_${Date.now()}.zip`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) {
-      alert("Failed to download ZIP. Please try again.");
+
+      setDownloadProgress(null);
+    } catch (err: any) {
+      if (err.message === "Cancelled by user") {
+        console.log("Download cancelled by user");
+      } else {
+        alert("Failed to download ZIP: " + (err.message || err));
+      }
+      setDownloadProgress(null);
     } finally {
       setDownloading(false);
     }
+  };
+
+  const handleCancelDownload = () => {
+    cancelRef.current = true;
+    setDownloadProgress(null);
+    setDownloading(false);
+  };
+
+  const buildDetailsText = (row: SubmissionRow): string => {
+    let deviceFormatted = "";
+    try {
+      if (row.deviceInfo) {
+        const dev = JSON.parse(row.deviceInfo);
+        deviceFormatted = [
+          `Device OS/Platform: ${dev.platform || "Unknown"}`,
+          `Screen Resolution: ${dev.screen || "Unknown"}`,
+          `Timezone          : ${dev.timezone || "Unknown"}`,
+          `Browser Locale    : ${dev.language || "Unknown"}`,
+          `User Agent        : ${dev.userAgent || "Unknown"}`,
+          `Browser Cookie ID : ${dev.deviceId || "N/A"}`
+        ].join("\n");
+      }
+    } catch (e) {
+      deviceFormatted = "Invalid JSON or raw: " + row.deviceInfo;
+    }
+
+    return [
+      "=== Primeasia University Sports Club ===",
+      "Executive Committee Application Details",
+      "========================================",
+      "",
+      `Full Name    : ${row.fullName}`,
+      `Email        : ${row.userEmail}`,
+      `Student ID   : ${row.studentId}`,
+      `Phone        : ${row.phone}`,
+      `Position     : ${row.position}`,
+      `Semester     : ${row.semester}`,
+      `Department   : ${row.department}`,
+      `CGPA         : ${row.cgpa}`,
+      `CV Filename  : ${row.filename}`,
+      `Submitted At : ${new Date(row.uploadedAt).toLocaleString("en-GB", { timeZone: "Asia/Dhaka" })}`,
+      "",
+      "=== Club & Leadership Experience ===",
+      row.experienceDetails || "None provided.",
+      "",
+      "=== Why Appropriate for Post ===",
+      row.whyAppropriate || "None provided.",
+      "",
+      "=== Security Auditing Device Telemetry ===",
+      deviceFormatted || "None collected.",
+      "",
+      "========================================",
+      "Generated by Primeasia University Sports Club Admin System",
+    ].join("\n");
   };
 
   const formatDate = (d: Date) =>
@@ -239,7 +389,7 @@ export default function AdminTable({ rows, initialDates }: Props) {
         <button
           className="btn-gold"
           onClick={handleDownloadZip}
-          disabled={downloading || rows.length === 0}
+          disabled={downloading || filtered.length === 0}
           style={{ flexShrink: 0, padding: "10px 20px", fontSize: "14px" }}
         >
           {downloading ? (
@@ -249,10 +399,10 @@ export default function AdminTable({ rows, initialDates }: Props) {
                 <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
                 <path d="M12 2a10 10 0 0 1 10 10" />
               </svg>
-              Generating...
+              Preparing ZIP...
             </>
           ) : (
-            <>📦 Download All (ZIP)</>
+            <>📦 Download ZIP ({filtered.length})</>
           )}
         </button>
       </div>
@@ -563,6 +713,94 @@ export default function AdminTable({ rows, initialDates }: Props) {
           </div>
         );
       })()}
+
+      {/* Client-side ZIP download progress overlay */}
+      {downloadProgress && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(10, 22, 40, 0.85)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+          padding: "20px",
+        }}>
+          <div className="glass-card" style={{
+            padding: "32px",
+            maxWidth: "450px",
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            textAlign: "center",
+            gap: "24px",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
+          }}>
+            <div style={{ position: "relative", width: "80px", height: "80px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg className="animate-spin" width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="3">
+                <circle cx="12" cy="12" r="10" stroke="rgba(201, 162, 39, 0.1)" strokeWidth="3" />
+                <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
+              </svg>
+              <div style={{
+                position: "absolute",
+                fontSize: "14px",
+                fontWeight: 700,
+                color: "var(--gold)",
+              }}>
+                {downloadProgress.total > 0 ? Math.round((downloadProgress.current / downloadProgress.total) * 100) : 0}%
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
+              <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                {downloadProgress.status === "downloading" ? "Downloading PDF CVs..." : 
+                 downloadProgress.status === "zipping" ? "Compiling ZIP Archive..." : 
+                 "Preparing Downloads..."}
+              </h3>
+              <p style={{ fontSize: "13px", color: "var(--text-muted)", wordBreak: "break-all", minHeight: "36px", margin: 0 }}>
+                {downloadProgress.name || "Initializing..."}
+              </p>
+            </div>
+
+            {/* Progress Bar */}
+            <div style={{
+              width: "100%",
+              height: "6px",
+              backgroundColor: "var(--navy-light)",
+              borderRadius: "3px",
+              overflow: "hidden",
+            }}>
+              <div style={{
+                height: "100%",
+                width: `${downloadProgress.total > 0 ? (downloadProgress.current / downloadProgress.total) * 100 : 0}%`,
+                background: "linear-gradient(90deg, var(--gold) 0%, var(--gold-light) 100%)",
+                borderRadius: "3px",
+                transition: "width 0.2s ease-out",
+              }} />
+            </div>
+
+            <div style={{ fontSize: "12.5px", color: "var(--text-secondary)" }}>
+              Processed {downloadProgress.current} of {downloadProgress.total} CVs
+            </div>
+
+            <button
+              onClick={handleCancelDownload}
+              className="btn-gold"
+              style={{
+                padding: "10px 20px",
+                fontSize: "13px",
+                background: "rgba(239, 68, 68, 0.08)",
+                borderColor: "rgba(239, 68, 68, 0.2)",
+                color: "#f87171",
+              }}
+            >
+              ✕ Cancel Download
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -36,8 +36,8 @@ export const studentFormSchema = z.object({
     .string()
     .refine((val) => {
       const parsed = parseFloat(val);
-      return !isNaN(parsed) && parsed >= 0 && parsed <= 4.0;
-    }, "CGPA must be a decimal between 0.00 and 4.00"),
+      return !isNaN(parsed) && parsed >= 2.5 && parsed <= 4.0;
+    }, "CGPA must be at least 2.5 (Minimum requirement is 2.5)"),
   experienceDetails: z
     .string()
     .min(5, "Please provide more details (minimum 5 characters)")
