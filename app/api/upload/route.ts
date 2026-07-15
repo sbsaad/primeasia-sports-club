@@ -17,10 +17,16 @@ export async function POST(request: Request): Promise<NextResponse> {
           throw new Error("Unauthorized: Please sign in to upload your CV.");
         }
 
+        // Dynamically resolve the callback URL to the current request host.
+        // This handles cases where Vercel's system variables point to older/disabled domains.
+        const requestUrl = new URL(request.url);
+        const callbackUrl = `${requestUrl.protocol}//${requestUrl.host}/api/upload`;
+
         return {
           allowedContentTypes: ["application/pdf"],
           maximumSizeInBytes: 5 * 1024 * 1024, // 5 MB
           tokenPayload: JSON.stringify({ email: session.user.email }),
+          callbackUrl,
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
