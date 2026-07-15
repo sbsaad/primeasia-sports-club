@@ -76,10 +76,6 @@ export default async function LandingPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* FIFA World Cup live badge */}
-          <div className="worldcup-badge" style={{ fontSize: "10px" }}>
-            ⚽ FIFA WC Live
-          </div>
           <form action={async () => {
             "use server";
             await signIn("google", { redirectTo: "/dashboard" });
@@ -257,7 +253,6 @@ export default async function LandingPage() {
       {/* ===== SPORTS WE COVER ===== */}
       <section style={{ padding: "60px 16px 20px", maxWidth: "960px", margin: "0 auto", width: "100%", position: "relative", zIndex: 5 }}>
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
-          <div className="worldcup-badge" style={{ marginBottom: "12px" }}>⚽ FIFA World Cup Season is ON!</div>
           <h2 style={{
             fontSize: "clamp(1.5rem, 3.5vw, 2.2rem)", fontWeight: 800,
             color: "var(--text-primary)", marginBottom: "8px"
@@ -265,7 +260,7 @@ export default async function LandingPage() {
             Sports We <span className="gradient-text">Champion</span>
           </h2>
           <p style={{ color: "var(--text-secondary)", fontSize: "14px" }}>
-            Football fever meets cricket passion — and so much more
+            Football, cricket & more — representing Primeasia with pride
           </p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "14px" }}>
