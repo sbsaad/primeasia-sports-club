@@ -1,29 +1,40 @@
 import { auth } from "@/lib/auth";
-import { generateClientTokenFromReadWriteToken } from "@vercel/blob/client";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 
-/**
- * Returns a short-lived, single-use client token so the browser can
- * PUT the PDF file directly to Vercel Blob CDN — no file goes through
- * the server, no Vercel function timeout, real linear upload progress.
- */
 export async function POST(request: Request): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const body = (await request.json()) as HandleUploadBody;
+
+  try {
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async (_pathname: string) => {
+        // This function runs on the client's initial request.
+        // It has access to the user's session cookies.
+        const session = await auth();
+        if (!session?.user?.email) {
+          throw new Error("Unauthorized: Please sign in to upload your CV.");
+        }
+
+        return {
+          allowedContentTypes: ["application/pdf"],
+          maximumSizeInBytes: 5 * 1024 * 1024, // 5 MB
+          tokenPayload: JSON.stringify({ email: session.user.email }),
+        };
+      },
+      onUploadCompleted: async ({ blob, tokenPayload }) => {
+        // This is a webhook callback triggered by Vercel's servers.
+        // It does NOT have the user's session cookies, which is why we don't check auth here.
+        console.log("Blob upload completed successfully:", blob.url, tokenPayload);
+      },
+    });
+
+    return NextResponse.json(jsonResponse);
+  } catch (error) {
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 400 }
+    );
   }
-
-  const { pathname } = await request.json() as { pathname: string };
-  if (!pathname || typeof pathname !== "string") {
-    return NextResponse.json({ error: "pathname required" }, { status: 400 });
-  }
-
-  const clientToken = await generateClientTokenFromReadWriteToken({
-    pathname,
-    maximumSizeInBytes: 5 * 1024 * 1024, // 5 MB
-    allowedContentTypes: ["application/pdf"],
-    validUntil: Date.now() + 5 * 60 * 1000, // 5 minutes
-  });
-
-  return NextResponse.json({ clientToken });
 }
