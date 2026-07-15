@@ -154,7 +154,7 @@ export default function StudentForm({ existingSubmission }: Props) {
         // It fetches a temporary token from our /api/upload route in the background,
         // and then streams directly to Vercel's servers.
         const blob = await upload(pathname, cvFile, {
-          access: "public",
+          access: "private",
           handleUploadUrl: "/api/upload",
           onUploadProgress: ({ percentage }) => {
             setUploadProgress(Math.min(99, Math.round(percentage)));
