@@ -206,16 +206,99 @@ export async function getMyRegistration() {
   return regs[0] ?? null;
 }
 
-export async function getMemberRegistrationDates() {
+export async function renewMembership(payload: {
+  transactionId: string;
+  bkashNumber?: string;
+  paymentSlipUrl?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: "Please sign in to renew your membership." };
+  }
+
+  const cleanTrxId = payload.transactionId.trim().toUpperCase();
+  if (!cleanTrxId || cleanTrxId.length < 5) {
+    return { success: false, error: "Please enter a valid bKash Transaction ID." };
+  }
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, session.user.email))
+    .limit(1);
+
+  if (!user) {
+    return { success: false, error: "User account not found." };
+  }
+
+  const [member] = await db
+    .select()
+    .from(memberRegistrations)
+    .where(eq(memberRegistrations.userId, user.id))
+    .limit(1);
+
+  if (!member) {
+    return { success: false, error: "No existing membership record found to renew." };
+  }
+
+  let history: any[] = [];
   try {
-    const startSetting = await db.select().from(settings).where(eq(settings.key, "member_reg_start")).limit(1);
-    const endSetting = await db.select().from(settings).where(eq(settings.key, "member_reg_end")).limit(1);
+    history = JSON.parse(member.renewalHistory || "[]");
+  } catch (e) {
+    history = [];
+  }
+
+  history.push({
+    renewalDate: new Date(),
+    trxId: cleanTrxId,
+    amount: "200",
+    slipUrl: payload.paymentSlipUrl || "",
+    status: "pending_renewal",
+  });
+
+  await db
+    .update(memberRegistrations)
+    .set({
+      transactionId: cleanTrxId,
+      bkashNumber: payload.bkashNumber?.trim() || member.bkashNumber,
+      paymentSlipUrl: payload.paymentSlipUrl || member.paymentSlipUrl,
+      paymentStatus: "pending_renewal",
+      renewalHistory: JSON.stringify(history),
+      updatedAt: new Date(),
+    })
+    .where(eq(memberRegistrations.id, member.id));
+
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+
+  return { success: true };
+}
+
+export async function getClubSettings() {
+  try {
+    const allSettings = await db.select().from(settings);
+    const map = new Map(allSettings.map((s) => [s.key, s.value]));
     return {
-      start: startSetting[0]?.value || null,
-      end: endSetting[0]?.value || null,
+      regStart: map.get("member_reg_start") || null,
+      regEnd: map.get("member_reg_end") || null,
+      validityLabel: map.get("membership_validity_label") || "SEASON 2026-2027",
+      durationMonths: parseInt(map.get("membership_duration_months") || "12", 10),
+      membershipFee: map.get("membership_fee_bdt") || "200",
     };
   } catch (err) {
-    console.error("Failed to read registration dates:", err);
-    return { start: null, end: null };
+    console.error("Failed to read club settings:", err);
+    return {
+      regStart: null,
+      regEnd: null,
+      validityLabel: "SEASON 2026-2027",
+      durationMonths: 12,
+      membershipFee: "200",
+    };
   }
 }
+
+export async function getMemberRegistrationDates() {
+  const s = await getClubSettings();
+  return { start: s.regStart, end: s.regEnd };
+}
+

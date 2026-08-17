@@ -76,24 +76,27 @@ ALTER TABLE "member_registrations" ADD COLUMN IF NOT EXISTS "payment_slip_url" T
 ALTER TABLE "member_registrations" ADD COLUMN IF NOT EXISTS "is_flagged" BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE "member_registrations" ADD COLUMN IF NOT EXISTS "flagged_reason" TEXT NOT NULL DEFAULT '';
 ALTER TABLE "member_registrations" ADD COLUMN IF NOT EXISTS "receipt_student_id" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "member_registrations" ADD COLUMN IF NOT EXISTS "valid_until" TIMESTAMP;
+ALTER TABLE "member_registrations" ADD COLUMN IF NOT EXISTS "renewal_count" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "member_registrations" ADD COLUMN IF NOT EXISTS "renewal_history" TEXT NOT NULL DEFAULT '[]';
 
-
-CREATE TABLE IF NOT EXISTS "cv_submissions" (
-  "id"                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "user_id"            UUID NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
-  "full_name"          TEXT NOT NULL,
-  "student_id"         TEXT NOT NULL,
-  "phone"              TEXT NOT NULL,
-  "position"           TEXT NOT NULL,
-  "semester"           INTEGER NOT NULL,
-  "department"         TEXT NOT NULL DEFAULT '',
-  "cgpa"               TEXT NOT NULL DEFAULT '',
-  "experience_details" TEXT NOT NULL DEFAULT '',
-  "why_appropriate"    TEXT NOT NULL DEFAULT '',
-  "device_info"        TEXT NOT NULL DEFAULT '',
-  "blob_url"           TEXT NOT NULL,
-  "filename"           TEXT NOT NULL,
-  "uploaded_at"        TIMESTAMP DEFAULT NOW() NOT NULL
+CREATE TABLE IF NOT EXISTS "donations" (
+  "id"                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "user_id"                UUID NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+  "member_registration_id" UUID REFERENCES "member_registrations"("id") ON DELETE SET NULL,
+  "donor_name"             TEXT NOT NULL,
+  "donor_student_id"        TEXT NOT NULL,
+  "donor_email"            TEXT NOT NULL,
+  "donor_phone"            TEXT NOT NULL,
+  "category"               TEXT NOT NULL DEFAULT 'General Club Expansion',
+  "amount"                 TEXT NOT NULL,
+  "transaction_id"         TEXT NOT NULL,
+  "payment_slip_url"       TEXT NOT NULL DEFAULT '',
+  "donor_note"             TEXT NOT NULL DEFAULT '',
+  "status"                 TEXT NOT NULL DEFAULT 'pending',
+  "admin_notes"            TEXT NOT NULL DEFAULT '',
+  "donated_at"             TIMESTAMP DEFAULT NOW() NOT NULL,
+  "verified_at"            TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS "settings" (
@@ -107,7 +110,7 @@ async function main() {
   await client.connect();
   console.log("Connected. Running migrations...");
   await client.query(SQL);
-  console.log("✅ Tables verified/created: users, member_registrations, cv_submissions, settings");
+  console.log("✅ Tables and columns verified/created: users, member_registrations (valid_until, renewals), donations, settings");
   await client.end();
 }
 
@@ -115,4 +118,3 @@ main().catch((err) => {
   console.error("Migration failed:", err);
   process.exit(1);
 });
-

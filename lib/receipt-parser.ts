@@ -157,3 +157,5 @@ export async function parseReceiptImage(
     throw err;
   }
 }
+
+export const parsePaymentReceipt = parseReceiptImage;

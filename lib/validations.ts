@@ -50,6 +50,13 @@ export const JERSEY_SIZES = [
   { size: "XXL", label: "Double Extra Large (44-46)" },
 ] as const;
 
+export const DONATION_CATEGORIES = [
+  "Tournament & Inter-University Fund",
+  "Jersey & Sports Equipment",
+  "Training, Practice & Coaching",
+  "General Club Expansion",
+] as const;
+
 export const GENDERS = ["Male", "Female", "Other"] as const;
 
 export const memberRegistrationSchema = z.object({

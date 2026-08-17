@@ -3,8 +3,8 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import AdminMemberTable from "@/components/AdminMemberTable";
-import { getAllMembers, getRegistrationSettings } from "@/actions/admin";
-import { Shield, Sparkles } from "lucide-react";
+import { getAllMembers, getAllDonations, getRegistrationSettings } from "@/actions/admin";
+import { Shield } from "lucide-react";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")
@@ -20,8 +20,9 @@ export default async function AdminPage() {
   const isAdmin = ADMIN_EMAILS.includes(session.user.email.toLowerCase());
   if (!isAdmin) redirect("/dashboard");
 
-  // Fetch all members & settings
+  // Fetch all members, donations & settings
   const members = await getAllMembers();
+  const donations = await getAllDonations();
   const settings = await getRegistrationSettings();
 
   return (
@@ -38,14 +39,14 @@ export default async function AdminPage() {
             <span>Admin Command Center</span>
           </div>
           <h1 style={{ fontWeight: 900, fontSize: "clamp(1.8rem, 4vw, 2.5rem)", marginBottom: "8px", color: "var(--text-primary)" }}>
-            Club <span className="gradient-text">Members Management</span>
+            Club <span className="gradient-text">Management &amp; Transparency Hub</span>
           </h1>
           <p style={{ color: "var(--text-secondary)", fontSize: "14.5px", maxWidth: "600px" }}>
-            Verify bKash transactions, filter by department or sport, and export detailed member rosters to Excel (.xlsx) or PDF.
+            Verify registrations &amp; renewals, review club donations with transparency breakdown, configure pass validity, and export rosters.
           </p>
         </div>
 
-        <AdminMemberTable rows={members} initialSettings={settings} />
+        <AdminMemberTable rows={members} donations={donations} initialSettings={settings} />
       </main>
     </div>
   );

@@ -1,6 +1,5 @@
-// lib/export-pdf.ts
 import { jsPDF } from "jspdf";
-import type { AdminMemberRow } from "@/actions/admin";
+import type { AdminMemberRow, AdminDonationRow } from "@/actions/admin";
 
 export type MemberSlipData = {
   membershipNumber: string;
@@ -713,11 +712,11 @@ export function downloadIdCardPdf(data: MemberSlipData) {
 
   doc.setFontSize(4.8);
   doc.setTextColor(148, 163, 184);
-  doc.text("bKash TrxID (200 BDT)", cardW - 4, 42, { align: "right" });
+  doc.text("PASS VALIDITY", cardW - 4, 42, { align: "right" });
 
-  doc.setFontSize(7);
-  doc.setTextColor(244, 63, 94); // Pink
-  doc.text(data.transactionId || "PENDING", cardW - 4, 47.5, { align: "right" });
+  doc.setFontSize(6.8);
+  doc.setTextColor(56, 189, 248); // Cyan
+  doc.text("SEASON 2026-2027", cardW - 4, 47.5, { align: "right" });
 
   // =========================================================================
   // PAGE 2: BACK SIDE (Verification Details, QR Code, Rules & Signatures)
@@ -767,16 +766,16 @@ export function downloadIdCardPdf(data: MemberSlipData) {
   doc.setFont("helvetica", "bold");
   doc.text(`${data.jerseySize || "M"} (For Tournament Use)`, 5, gridY + 7.2);
 
-  // Box 2: Fee Paid
+  // Box 2: Club Status
   doc.setFillColor(11, 23, 48);
   doc.roundedRect(3.5 + boxW + 3, gridY, boxW, boxH, 1, 1, "F");
   doc.setFontSize(4.5);
   doc.setTextColor(148, 163, 184);
-  doc.text("MEMBERSHIP FEE", 3.5 + boxW + 4.5, gridY + 3.2);
-  doc.setFontSize(6.5);
+  doc.text("CLUB STATUS", 3.5 + boxW + 4.5, gridY + 3.2);
+  doc.setFontSize(6.2);
   doc.setTextColor(74, 222, 128); // Green
   doc.setFont("helvetica", "bold");
-  doc.text("200 BDT · bKash Paid", 3.5 + boxW + 4.5, gridY + 7.2);
+  doc.text("Active Athlete (Certified)", 3.5 + boxW + 4.5, gridY + 7.2);
 
   // Box 3: Phone
   doc.setFillColor(11, 23, 48);
@@ -841,3 +840,373 @@ export function downloadIdCardPdf(data: MemberSlipData) {
   const safeName = (data.fullName || "Student").replace(/[^a-zA-Z0-9]/g, "_");
   doc.save(`PaUGSC_Official_ID_Card_${safeName}_${data.studentId}.pdf`);
 }
+
+/**
+ * Downloads the Official Treasury & Financial Audit Statement PDF (Landscape A4)
+ * Provides executive financial summary, fund stream breakdown, itemized verified ledger,
+ * and official university signatory blocks.
+ */
+export function downloadFinancialAuditPdf(
+  members: AdminMemberRow[],
+  donations: AdminDonationRow[] = [],
+  settings?: {
+    validityLabel?: string;
+    membershipFee?: string;
+  }
+) {
+  const doc = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4",
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 8;
+  const contentWidth = pageWidth - margin * 2;
+
+  const memFee = parseFloat(settings?.membershipFee || "200") || 200;
+  const verifiedMembers = members.filter((m) => m.paymentStatus === "verified");
+  const pendingMembers = members.filter((m) => m.paymentStatus === "pending" || m.paymentStatus === "pending_renewal");
+
+  const verifiedDonations = donations.filter((d) => d.status === "verified");
+  const pendingDonations = donations.filter((d) => d.status === "pending");
+
+  const verifiedMembershipTotal = verifiedMembers.length * memFee;
+  const pendingMembershipTotal = pendingMembers.length * memFee;
+
+  const verifiedDonationTotal = verifiedDonations.reduce((acc, d) => acc + (parseFloat(d.amount) || 0), 0);
+  const pendingDonationTotal = pendingDonations.reduce((acc, d) => acc + (parseFloat(d.amount) || 0), 0);
+
+  const grandTotalVerifiedTreasury = verifiedMembershipTotal + verifiedDonationTotal;
+  const totalPendingRequests = pendingMembershipTotal + pendingDonationTotal;
+
+  // Fund Breakdown Mapping
+  const categoriesMap: { [cat: string]: { verifiedCount: number; verifiedAmt: number; pendingAmt: number } } = {
+    "Membership Registration": { verifiedCount: verifiedMembers.length, verifiedAmt: verifiedMembershipTotal, pendingAmt: pendingMembershipTotal },
+    "Tournament & Inter-University Fund": { verifiedCount: 0, verifiedAmt: 0, pendingAmt: 0 },
+    "Jersey & Sports Equipment": { verifiedCount: 0, verifiedAmt: 0, pendingAmt: 0 },
+    "Training, Practice & Coaching": { verifiedCount: 0, verifiedAmt: 0, pendingAmt: 0 },
+    "General Club Expansion": { verifiedCount: 0, verifiedAmt: 0, pendingAmt: 0 },
+  };
+
+  for (const d of donations) {
+    const cat = d.category || "General Club Expansion";
+    if (!categoriesMap[cat]) {
+      categoriesMap[cat] = { verifiedCount: 0, verifiedAmt: 0, pendingAmt: 0 };
+    }
+    const amt = parseFloat(d.amount) || 0;
+    if (d.status === "verified") {
+      categoriesMap[cat].verifiedCount += 1;
+      categoriesMap[cat].verifiedAmt += amt;
+    } else if (d.status === "pending") {
+      categoriesMap[cat].pendingAmt += amt;
+    }
+  }
+
+  // Unified verified ledger transactions sorted newest first
+  const verifiedTransactions = [
+    ...verifiedMembers.map((m) => ({
+      date: new Date(m.registeredAt),
+      stream: "Membership Registration",
+      name: m.fullName,
+      studentId: m.studentId,
+      trxId: m.transactionId,
+      amount: memFee,
+      ref: m.membershipNumber,
+    })),
+    ...verifiedDonations.map((d) => ({
+      date: new Date(d.donatedAt),
+      stream: d.category,
+      name: d.donorName,
+      studentId: d.donorStudentId,
+      trxId: d.transactionId,
+      amount: parseFloat(d.amount) || 0,
+      ref: d.donorNote ? `Note: "${d.donorNote.slice(0, 16)}"` : "Donation",
+    })),
+  ].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+  // Header Renderer
+  const drawAuditHeader = (pageNum: number, totalPages?: number) => {
+    doc.setFillColor(11, 23, 48);
+    doc.roundedRect(margin, margin, contentWidth, 20, 2, 2, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("PRIMEASIA UNIVERSITY GAMES & SPORTS CLUB (PaUGSC)", pageWidth / 2, margin + 7.5, { align: "center" });
+
+    doc.setFontSize(8.5);
+    doc.setTextColor(245, 158, 11);
+    const dateStr = new Date().toLocaleString("en-GB", { timeZone: "Asia/Dhaka" });
+    doc.text(
+      `OFFICIAL TREASURY & FINANCIAL AUDIT STATEMENT · Season: ${settings?.validityLabel || "2026-2027"} · Generated: ${dateStr}${totalPages ? ` · Page ${pageNum}` : ""}`,
+      pageWidth / 2,
+      margin + 15,
+      { align: "center" }
+    );
+  };
+
+  drawAuditHeader(1);
+
+  let curY = margin + 23;
+
+  // 1. Notice of Financial Integrity Banner
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(margin, curY, contentWidth, 8.5, 1, 1, "FD");
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.2);
+  doc.text(
+    "FINANCIAL INTEGRITY RULE: Only payments with status 'VERIFIED' are counted as Actual Club Treasury. Pending requests are cataloged separately.",
+    margin + 4,
+    curY + 5.5
+  );
+
+  curY += 11;
+
+  // 2. Executive 4-KPI Metric Cards
+  const kpiW = (contentWidth - 9) / 4;
+  const kpiH = 18;
+
+  // KPI 1: Grand Verified Treasury
+  doc.setFillColor(240, 253, 244); // Light Green
+  doc.setDrawColor(34, 197, 94);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(margin, curY, kpiW, kpiH, 1.5, 1.5, "FD");
+  doc.setFontSize(6.5);
+  doc.setTextColor(22, 101, 52);
+  doc.setFont("helvetica", "bold");
+  doc.text("TOTAL VERIFIED TREASURY", margin + 4, curY + 5);
+  doc.setFontSize(12);
+  doc.text(`৳${grandTotalVerifiedTreasury.toLocaleString()} BDT`, margin + 4, curY + 11.5);
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "normal");
+  doc.text(`${verifiedTransactions.length} Verified Transactions`, margin + 4, curY + 15.5);
+
+  // KPI 2: Membership Fees
+  doc.setFillColor(254, 252, 232); // Light Yellow
+  doc.setDrawColor(234, 179, 8);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(margin + kpiW + 3, curY, kpiW, kpiH, 1.5, 1.5, "FD");
+  doc.setFontSize(6.5);
+  doc.setTextColor(133, 77, 14);
+  doc.setFont("helvetica", "bold");
+  doc.text("VERIFIED MEMBERSHIP DUES", margin + kpiW + 7, curY + 5);
+  doc.setFontSize(11);
+  doc.text(`৳${verifiedMembershipTotal.toLocaleString()} BDT`, margin + kpiW + 7, curY + 11.5);
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "normal");
+  doc.text(`${verifiedMembers.length} Members @ ৳${memFee} BDT`, margin + kpiW + 7, curY + 15.5);
+
+  // KPI 3: Donations & Patrons
+  doc.setFillColor(240, 249, 255); // Light Blue
+  doc.setDrawColor(56, 189, 248);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(margin + (kpiW + 3) * 2, curY, kpiW, kpiH, 1.5, 1.5, "FD");
+  doc.setFontSize(6.5);
+  doc.setTextColor(3, 105, 161);
+  doc.setFont("helvetica", "bold");
+  doc.text("DONATIONS & CONTRIBUTIONS", margin + (kpiW + 3) * 2 + 4, curY + 5);
+  doc.setFontSize(11);
+  doc.text(`৳${verifiedDonationTotal.toLocaleString()} BDT`, margin + (kpiW + 3) * 2 + 4, curY + 11.5);
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "normal");
+  doc.text(`${verifiedDonations.length} Verified Donations`, margin + (kpiW + 3) * 2 + 4, curY + 15.5);
+
+  // KPI 4: Pending Requests
+  doc.setFillColor(254, 242, 242); // Light Red
+  doc.setDrawColor(248, 113, 113);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(margin + (kpiW + 3) * 3, curY, kpiW, kpiH, 1.5, 1.5, "FD");
+  doc.setFontSize(6.5);
+  doc.setTextColor(153, 27, 27);
+  doc.setFont("helvetica", "bold");
+  doc.text("PENDING REQUESTS (NOT IN TREASURY)", margin + (kpiW + 3) * 3 + 4, curY + 5);
+  doc.setFontSize(11);
+  doc.text(`৳${totalPendingRequests.toLocaleString()} BDT`, margin + (kpiW + 3) * 3 + 4, curY + 11.5);
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "normal");
+  doc.text(`${pendingMembers.length + pendingDonations.length} Pending Review`, margin + (kpiW + 3) * 3 + 4, curY + 15.5);
+
+  curY += kpiH + 6;
+
+  // 3. Fund Stream Summary Table
+  doc.setFillColor(11, 23, 48);
+  doc.rect(margin, curY, contentWidth, 6, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.text("INCOME STREAM & FUND ALLOCATION BREAKDOWN", margin + 3, curY + 4.2);
+
+  curY += 6;
+
+  // Sub-headers
+  doc.setFillColor(226, 232, 240);
+  doc.rect(margin, curY, contentWidth, 5.5, "F");
+  doc.setTextColor(51, 65, 85);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.8);
+  doc.text("Category / Fund Stream", margin + 4, curY + 3.8);
+  doc.text("Verified Count", margin + 100, curY + 3.8);
+  doc.text("Verified Actual (BDT)", margin + 140, curY + 3.8);
+  doc.text("Pending Requests (BDT)", margin + 195, curY + 3.8);
+  doc.text("Treasury Share (%)", margin + 245, curY + 3.8);
+
+  curY += 5.5;
+
+  Object.entries(categoriesMap).forEach(([cat, stats], i) => {
+    const rowBg = i % 2 === 0 ? [255, 255, 255] : [248, 250, 252];
+    doc.setFillColor(rowBg[0], rowBg[1], rowBg[2]);
+    doc.rect(margin, curY, contentWidth, 5.5, "F");
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.8);
+    doc.text(cat, margin + 4, curY + 3.8);
+    doc.text(String(stats.verifiedCount), margin + 105, curY + 3.8);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(22, 101, 52); // Green
+    doc.text(`৳${stats.verifiedAmt.toLocaleString()} BDT`, margin + 140, curY + 3.8);
+
+    doc.setTextColor(153, 27, 27); // Red
+    doc.setFont("helvetica", "normal");
+    doc.text(`৳${stats.pendingAmt.toLocaleString()} BDT`, margin + 195, curY + 3.8);
+
+    const share = grandTotalVerifiedTreasury > 0 ? ((stats.verifiedAmt / grandTotalVerifiedTreasury) * 100).toFixed(1) : "0.0";
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${share}%`, margin + 250, curY + 3.8);
+
+    curY += 5.5;
+  });
+
+  // Grand Total Summary Row
+  doc.setFillColor(241, 245, 249);
+  doc.rect(margin, curY, contentWidth, 6, "F");
+  doc.setDrawColor(203, 213, 225);
+  doc.line(margin, curY, margin + contentWidth, curY);
+  doc.setTextColor(11, 23, 48);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.2);
+  doc.text("GRAND TOTAL RECONCILED TREASURY", margin + 4, curY + 4.2);
+  doc.text(String(verifiedTransactions.length), margin + 105, curY + 4.2);
+  doc.setTextColor(22, 101, 52);
+  doc.text(`৳${grandTotalVerifiedTreasury.toLocaleString()} BDT`, margin + 140, curY + 4.2);
+  doc.setTextColor(153, 27, 27);
+  doc.text(`৳${totalPendingRequests.toLocaleString()} BDT`, margin + 195, curY + 4.2);
+  doc.setTextColor(11, 23, 48);
+  doc.text("100.0%", margin + 250, curY + 4.2);
+
+  curY += 10;
+
+  // 4. Itemized Verified Ledger Table
+  doc.setFillColor(11, 23, 48);
+  doc.rect(margin, curY, contentWidth, 6, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.text(`ITEMIZED VERIFIED TRANSACTIONS LEDGER (${verifiedTransactions.length} Verified Entries)`, margin + 3, curY + 4.2);
+
+  curY += 6;
+
+  // Ledger Table Headers
+  const ledgerCols = [
+    { label: "#", x: margin + 2, w: 8 },
+    { label: "Date", x: margin + 10, w: 22 },
+    { label: "Fund / Stream", x: margin + 32, w: 55 },
+    { label: "Payer / Athlete", x: margin + 87, w: 50 },
+    { label: "Student ID", x: margin + 137, w: 25 },
+    { label: "bKash TrxID", x: margin + 162, w: 32 },
+    { label: "Amount (BDT)", x: margin + 194, w: 28 },
+    { label: "Reference / Pass", x: margin + 222, w: 58 },
+  ];
+
+  doc.setFillColor(226, 232, 240);
+  doc.rect(margin, curY, contentWidth, 5.5, "F");
+  doc.setTextColor(51, 65, 85);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.8);
+  ledgerCols.forEach((c) => doc.text(c.label, c.x, curY + 3.8));
+
+  curY += 5.5;
+
+  let pageIndex = 1;
+  const rowH = 6;
+
+  verifiedTransactions.forEach((t, idx) => {
+    // Check if new page is needed
+    if (curY + rowH > pageHeight - margin - 22) {
+      doc.addPage([297, 210], "landscape");
+      pageIndex++;
+      drawAuditHeader(pageIndex);
+      curY = margin + 24;
+
+      // Repeat Table Headers on next page
+      doc.setFillColor(226, 232, 240);
+      doc.rect(margin, curY, contentWidth, 5.5, "F");
+      doc.setTextColor(51, 65, 85);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.8);
+      ledgerCols.forEach((c) => doc.text(c.label, c.x, curY + 3.8));
+      curY += 5.5;
+    }
+
+    const rowBg = idx % 2 === 0 ? [255, 255, 255] : [248, 250, 252];
+    doc.setFillColor(rowBg[0], rowBg[1], rowBg[2]);
+    doc.rect(margin, curY, contentWidth, rowH, "F");
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(String(idx + 1), ledgerCols[0].x, curY + 4);
+
+    doc.text(t.date.toLocaleDateString("en-GB"), ledgerCols[1].x, curY + 4);
+
+    doc.setTextColor(15, 23, 42);
+    doc.text(t.stream.length > 30 ? t.stream.slice(0, 29) + "…" : t.stream, ledgerCols[2].x, curY + 4);
+
+    doc.setFont("helvetica", "bold");
+    doc.text(t.name.length > 25 ? t.name.slice(0, 24) + "…" : t.name, ledgerCols[3].x, curY + 4);
+
+    doc.setFont("helvetica", "normal");
+    doc.text(t.studentId, ledgerCols[4].x, curY + 4);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(226, 19, 110);
+    doc.text(t.trxId, ledgerCols[5].x, curY + 4);
+
+    doc.setTextColor(22, 101, 52);
+    doc.text(`৳${t.amount.toLocaleString()} BDT`, ledgerCols[6].x, curY + 4);
+
+    doc.setTextColor(100, 116, 139);
+    doc.setFont("helvetica", "normal");
+    doc.text(t.ref.length > 32 ? t.ref.slice(0, 31) + "…" : t.ref, ledgerCols[7].x, curY + 4);
+
+    curY += rowH;
+  });
+
+  // Signatory Blocks at bottom of final page
+  const sigY = pageHeight - margin - 15;
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.35);
+
+  const sigBlockW = (contentWidth - 30) / 4;
+  for (let s = 0; s < 4; s++) {
+    const sX = margin + s * (sigBlockW + 10);
+    doc.line(sX, sigY, sX + sigBlockW, sigY);
+  }
+
+  doc.setFontSize(6.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(11, 23, 48);
+  doc.text("Club President", margin + sigBlockW / 2, sigY + 4, { align: "center" });
+  doc.text("General Secretary / Treasurer", margin + sigBlockW + 10 + sigBlockW / 2, sigY + 4, { align: "center" });
+  doc.text("Club Faculty Advisor", margin + (sigBlockW + 10) * 2 + sigBlockW / 2, sigY + 4, { align: "center" });
+  doc.text("University Accounts & Audit", margin + (sigBlockW + 10) * 3 + sigBlockW / 2, sigY + 4, { align: "center" });
+
+  const dateSlug = new Date().toISOString().slice(0, 10);
+  doc.save(`PaUGSC_Financial_Audit_Report_${dateSlug}.pdf`);
+}
+

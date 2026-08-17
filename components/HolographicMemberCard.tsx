@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Clock,
   AlertCircle,
-  Download,
   RefreshCw,
   Sparkles,
   QrCode,
@@ -21,24 +20,26 @@ import {
 } from "lucide-react";
 
 export type CardMemberData = {
-  membershipNumber: string;
   fullName: string;
   studentId: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
   department: string;
-  semester: number | string;
-  gender: string;
-  bloodGroup: string;
-  sportsInterests: string | string[];
-  jerseySize: string;
+  semester?: number | string;
+  gender?: string;
+  bloodGroup?: string;
+  sportsInterests?: string | string[];
+  sportsList?: string[];
+  jerseySize?: string;
   emergencyContact?: string;
   bkashNumber?: string;
   transactionId: string;
   paymentAmount?: string;
   paymentStatus: string;
+  membershipNumber?: string;
   registeredAt: Date | string;
   userAvatar?: string | null;
+  validityLabel?: string;
 };
 
 interface Props {
@@ -97,9 +98,11 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
   };
 
   let sportsList: string[] = [];
-  if (Array.isArray(member.sportsInterests)) {
+  if (member.sportsList && Array.isArray(member.sportsList)) {
+    sportsList = member.sportsList;
+  } else if (Array.isArray(member.sportsInterests)) {
     sportsList = member.sportsInterests;
-  } else {
+  } else if (member.sportsInterests) {
     try {
       const parsed = JSON.parse(member.sportsInterests);
       sportsList = Array.isArray(parsed) ? parsed : [member.sportsInterests];
@@ -561,10 +564,10 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
 
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: "9.5px", color: "#94a3b8", textTransform: "uppercase", fontWeight: 800 }}>
-                  bKash TrxID (200 Tk)
+                  Pass Validity
                 </div>
-                <div style={{ fontSize: "13px", fontWeight: 900, color: "#f43f5e", letterSpacing: "0.06em" }}>
-                  {member.transactionId || "PENDING"}
+                <div style={{ fontSize: "13px", fontWeight: 900, color: "#38bdf8", letterSpacing: "0.06em" }}>
+                  {member.validityLabel || "SEASON 2026-2027"}
                 </div>
               </div>
             </div>
@@ -629,9 +632,11 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
               </div>
 
               <div style={{ background: "rgba(16, 32, 66, 0.9)", padding: "7px 10px", borderRadius: "10px", border: "1px solid rgba(34,197,94,0.3)" }}>
-                <span style={{ color: "#94a3b8", display: "block", fontSize: "9.5px", fontWeight: 700 }}>Fee Paid</span>
-                <strong style={{ color: "#4ade80", fontSize: "12px" }}>200 BDT</strong>
-                <span style={{ fontSize: "8.5px", color: "#38bdf8", display: "block" }}>bKash Edu Fee</span>
+                <span style={{ color: "#94a3b8", display: "block", fontSize: "9.5px", fontWeight: 700 }}>Club Status</span>
+                <strong style={{ color: isVerified ? "#4ade80" : "#fbbf24", fontSize: "12px" }}>
+                  {isVerified ? "Active Athlete" : "Pending Member"}
+                </strong>
+                <span style={{ fontSize: "8.5px", color: "#38bdf8", display: "block" }}>PaUGSC Certified</span>
               </div>
 
               <div style={{ background: "rgba(16, 32, 66, 0.9)", padding: "7px 10px", borderRadius: "10px", border: "1px solid rgba(251,191,36,0.2)" }}>
@@ -937,10 +942,10 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
 
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: "9.5px", color: "#94a3b8", textTransform: "uppercase", fontWeight: 800 }}>
-                bKash TrxID (200 Tk)
+                Pass Validity
               </div>
-              <div style={{ fontSize: "13px", fontWeight: 900, color: "#f43f5e", letterSpacing: "0.06em" }}>
-                {member.transactionId || "PENDING"}
+              <div style={{ fontSize: "13px", fontWeight: 900, color: "#38bdf8", letterSpacing: "0.06em" }}>
+                {member.validityLabel || "SEASON 2026-2027"}
               </div>
             </div>
           </div>
@@ -993,9 +998,11 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
             </div>
 
             <div style={{ background: "rgba(16, 32, 66, 0.9)", padding: "7px 10px", borderRadius: "10px", border: "1px solid rgba(34,197,94,0.3)" }}>
-              <span style={{ color: "#94a3b8", display: "block", fontSize: "9.5px", fontWeight: 700 }}>Fee Paid</span>
-              <strong style={{ color: "#4ade80", fontSize: "12px" }}>200 BDT</strong>
-              <span style={{ fontSize: "8.5px", color: "#38bdf8", display: "block" }}>bKash Edu Fee</span>
+              <span style={{ color: "#94a3b8", display: "block", fontSize: "9.5px", fontWeight: 700 }}>Club Status</span>
+              <strong style={{ color: isVerified ? "#4ade80" : "#fbbf24", fontSize: "12px" }}>
+                {isVerified ? "Active Athlete" : "Pending Member"}
+              </strong>
+              <span style={{ fontSize: "8.5px", color: "#38bdf8", display: "block" }}>PaUGSC Certified</span>
             </div>
 
             <div style={{ background: "rgba(16, 32, 66, 0.9)", padding: "7px 10px", borderRadius: "10px", border: "1px solid rgba(251,191,36,0.2)" }}>

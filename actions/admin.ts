@@ -1,9 +1,10 @@
+// actions/admin.ts
 "use server";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { memberRegistrations, users, settings, cvSubmissions } from "@/lib/db/schema";
-import { eq, notInArray, desc } from "drizzle-orm";
+import { memberRegistrations, users, settings, cvSubmissions, donations } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
@@ -40,11 +41,33 @@ export type AdminMemberRow = {
   isFlagged: boolean;
   flaggedReason: string;
   receiptStudentId: string;
+  validUntil: Date | null;
+  renewalCount: number;
+  renewalHistory: string;
   adminNotes: string;
   deviceInfo: string;
   registeredAt: Date;
   updatedAt: Date;
   userAvatar: string | null;
+};
+
+export type AdminDonationRow = {
+  id: string;
+  userId: string;
+  memberRegistrationId: string | null;
+  donorName: string;
+  donorStudentId: string;
+  donorEmail: string;
+  donorPhone: string;
+  category: string;
+  amount: string;
+  transactionId: string;
+  paymentSlipUrl: string;
+  donorNote: string;
+  status: string;
+  adminNotes: string;
+  donatedAt: Date;
+  verifiedAt: Date | null;
 };
 
 export async function getAllMembers(): Promise<AdminMemberRow[]> {
@@ -75,6 +98,9 @@ export async function getAllMembers(): Promise<AdminMemberRow[]> {
       isFlagged: memberRegistrations.isFlagged,
       flaggedReason: memberRegistrations.flaggedReason,
       receiptStudentId: memberRegistrations.receiptStudentId,
+      validUntil: memberRegistrations.validUntil,
+      renewalCount: memberRegistrations.renewalCount,
+      renewalHistory: memberRegistrations.renewalHistory,
       adminNotes: memberRegistrations.adminNotes,
       deviceInfo: memberRegistrations.deviceInfo,
       registeredAt: memberRegistrations.registeredAt,
@@ -88,26 +114,137 @@ export async function getAllMembers(): Promise<AdminMemberRow[]> {
   return rows;
 }
 
-export async function updateMemberPaymentStatus(
-  id: string,
-  paymentStatus: "pending" | "verified" | "rejected",
+export async function getAllDonations(): Promise<AdminDonationRow[]> {
+  const session = await auth();
+  requireAdmin(session?.user?.email);
+
+  const rows = await db
+    .select()
+    .from(donations)
+    .orderBy(desc(donations.donatedAt));
+
+  return rows.map((r) => ({
+    id: r.id,
+    userId: r.userId,
+    memberRegistrationId: r.memberRegistrationId,
+    donorName: r.donorName,
+    donorStudentId: r.donorStudentId,
+    donorEmail: r.donorEmail,
+    donorPhone: r.donorPhone,
+    category: r.category,
+    amount: r.amount,
+    transactionId: r.transactionId,
+    paymentSlipUrl: r.paymentSlipUrl,
+    donorNote: r.donorNote,
+    status: r.status,
+    adminNotes: r.adminNotes,
+    donatedAt: r.donatedAt,
+    verifiedAt: r.verifiedAt,
+  }));
+}
+
+export async function updateDonationStatus(
+  donationId: string,
+  status: "verified" | "rejected" | "pending",
   adminNotes?: string
 ) {
   const session = await auth();
   requireAdmin(session?.user?.email);
 
   await db
+    .update(donations)
+    .set({
+      status,
+      adminNotes: adminNotes ?? "",
+      verifiedAt: status === "verified" ? new Date() : null,
+    })
+    .where(eq(donations.id, donationId));
+
+  revalidatePath("/admin");
+  revalidatePath("/dashboard");
+}
+
+export async function updateMemberPaymentStatus(
+  id: string,
+  paymentStatus: "pending" | "verified" | "rejected" | "expired" | "pending_renewal",
+  adminNotes?: string
+) {
+  const session = await auth();
+  requireAdmin(session?.user?.email);
+
+  // Compute validUntil if verified
+  let validUntil: Date | null = null;
+  if (paymentStatus === "verified") {
+    const durationSetting = await db.select().from(settings).where(eq(settings.key, "membership_duration_months")).limit(1);
+    const months = parseInt(durationSetting[0]?.value || "12", 10);
+    const d = new Date();
+    d.setMonth(d.getMonth() + months);
+    validUntil = d;
+  }
+
+  const updatePayload: any = {
+    paymentStatus,
+    adminNotes: adminNotes ?? "",
+    updatedAt: new Date(),
+  };
+
+  if (validUntil) {
+    updatePayload.validUntil = validUntil;
+  }
+
+  await db
+    .update(memberRegistrations)
+    .set(updatePayload)
+    .where(eq(memberRegistrations.id, id));
+
+  revalidatePath("/admin");
+  revalidatePath("/dashboard");
+}
+
+export async function verifyMemberRenewal(id: string) {
+  const session = await auth();
+  requireAdmin(session?.user?.email);
+
+  const [member] = await db
+    .select()
+    .from(memberRegistrations)
+    .where(eq(memberRegistrations.id, id))
+    .limit(1);
+
+  if (!member) return;
+
+  const durationSetting = await db.select().from(settings).where(eq(settings.key, "membership_duration_months")).limit(1);
+  const months = parseInt(durationSetting[0]?.value || "12", 10);
+  const newValidUntil = new Date();
+  newValidUntil.setMonth(newValidUntil.getMonth() + months);
+
+  let history: any[] = [];
+  try {
+    history = JSON.parse(member.renewalHistory || "[]");
+  } catch (e) {
+    history = [];
+  }
+
+  if (history.length > 0) {
+    const last = history[history.length - 1];
+    last.status = "verified";
+    last.verifiedAt = new Date();
+    last.validUntil = newValidUntil;
+  }
+
+  await db
     .update(memberRegistrations)
     .set({
-      paymentStatus,
-      adminNotes: adminNotes ?? "",
+      paymentStatus: "verified",
+      validUntil: newValidUntil,
+      renewalCount: (member.renewalCount || 0) + 1,
+      renewalHistory: JSON.stringify(history),
       updatedAt: new Date(),
     })
     .where(eq(memberRegistrations.id, id));
 
   revalidatePath("/admin");
   revalidatePath("/dashboard");
-  revalidatePath("/register");
 }
 
 export async function deleteMember(id: string) {
@@ -118,105 +255,97 @@ export async function deleteMember(id: string) {
 
   revalidatePath("/admin");
   revalidatePath("/dashboard");
-  revalidatePath("/register");
 }
 
-export async function getRegistrationSettings() {
-  const start = await db.select().from(settings).where(eq(settings.key, "member_reg_start")).limit(1);
-  const end = await db.select().from(settings).where(eq(settings.key, "member_reg_end")).limit(1);
-  const fee = await db.select().from(settings).where(eq(settings.key, "membership_fee")).limit(1);
-  const instructions = await db.select().from(settings).where(eq(settings.key, "bkash_instructions")).limit(1);
-
-  return {
-    start: start[0]?.value ?? "",
-    end: end[0]?.value ?? "",
-    fee: fee[0]?.value ?? "200",
-    instructions: instructions[0]?.value ?? "",
-  };
-}
-
-export async function saveRegistrationSettings(config: {
-  start: string;
-  end: string;
-  fee?: string;
-  instructions?: string;
+export async function saveClubFullSettings(settingsObj: {
+  regStart?: string | null;
+  regEnd?: string | null;
+  validityLabel?: string | null;
+  durationMonths?: number | null;
+  membershipFee?: string | null;
 }) {
   const session = await auth();
   requireAdmin(session?.user?.email);
 
-  await db
-    .insert(settings)
-    .values({ key: "member_reg_start", value: config.start })
-    .onConflictDoUpdate({ target: settings.key, set: { value: config.start } });
+  const entries: [string, string][] = [
+    ["member_reg_start", settingsObj.regStart || ""],
+    ["member_reg_end", settingsObj.regEnd || ""],
+    ["membership_validity_label", settingsObj.validityLabel || "SEASON 2026-2027"],
+    ["membership_duration_months", String(settingsObj.durationMonths || 12)],
+    ["membership_fee_bdt", settingsObj.membershipFee || "200"],
+  ];
 
-  await db
-    .insert(settings)
-    .values({ key: "member_reg_end", value: config.end })
-    .onConflictDoUpdate({ target: settings.key, set: { value: config.end } });
-
-  if (config.fee) {
+  for (const [key, value] of entries) {
     await db
       .insert(settings)
-      .values({ key: "membership_fee", value: config.fee })
-      .onConflictDoUpdate({ target: settings.key, set: { value: config.fee } });
+      .values({ key, value })
+      .onConflictDoUpdate({ target: settings.key, set: { value } });
   }
 
-  if (config.instructions) {
-    await db
-      .insert(settings)
-      .values({ key: "bkash_instructions", value: config.instructions })
-      .onConflictDoUpdate({ target: settings.key, set: { value: config.instructions } });
-  }
-
-  revalidatePath("/");
+  revalidatePath("/admin");
   revalidatePath("/dashboard");
   revalidatePath("/register");
-  revalidatePath("/admin");
+  revalidatePath("/");
+}
+
+// Retain legacy settings helper for backward compatibility
+export async function saveRegistrationSettings(start: string | null, end: string | null) {
+  return saveClubFullSettings({ regStart: start, regEnd: end });
+}
+
+export async function getRegistrationSettings() {
+  try {
+    const allSettings = await db.select().from(settings);
+    const map = new Map(allSettings.map((s) => [s.key, s.value]));
+    return {
+      start: map.get("member_reg_start") || "",
+      end: map.get("member_reg_end") || "",
+      validityLabel: map.get("membership_validity_label") || "SEASON 2026-2027",
+      durationMonths: parseInt(map.get("membership_duration_months") || "12", 10),
+      membershipFee: map.get("membership_fee_bdt") || "200",
+      fee: map.get("membership_fee_bdt") || "200",
+      instructions: "",
+    };
+  } catch (err) {
+    console.error("Failed to read registration settings:", err);
+    return {
+      start: "",
+      end: "",
+      validityLabel: "SEASON 2026-2027",
+      durationMonths: 12,
+      membershipFee: "200",
+      fee: "200",
+      instructions: "",
+    };
+  }
 }
 
 export async function resetAllMemberData() {
   const session = await auth();
   requireAdmin(session?.user?.email);
 
-  // 1. Delete all member registrations
   await db.delete(memberRegistrations);
+  await db.delete(donations);
+  await db.delete(cvSubmissions);
 
-  // 2. Delete non-admin users if configured
-  if (ADMIN_EMAILS.length > 0) {
-    await db.delete(users).where(notInArray(users.email, ADMIN_EMAILS));
-  }
-
-  revalidatePath("/");
+  revalidatePath("/admin");
   revalidatePath("/dashboard");
   revalidatePath("/register");
-  revalidatePath("/admin");
+  revalidatePath("/");
 }
 
-// Retain legacy functions to prevent breaking any existing references
-export async function getRecruitmentDates() {
-  return getRegistrationSettings();
-}
-
-export async function saveRecruitmentDates(start: string, end: string) {
-  return saveRegistrationSettings({ start, end });
+// Legacy recruitment exports for backward compatibility
+export async function saveRecruitmentDates(start: string | null, end: string | null) {
+  return saveRegistrationSettings(start, end);
 }
 
 export async function resetRecruitmentData() {
   return resetAllMemberData();
 }
 
-export async function getAllSubmissions() {
-  const session = await auth();
-  requireAdmin(session?.user?.email);
-
-  return db
-    .select()
-    .from(cvSubmissions)
-    .orderBy(cvSubmissions.uploadedAt);
-}
-
 export async function deleteSubmission(id: string) {
   const session = await auth();
   requireAdmin(session?.user?.email);
   await db.delete(cvSubmissions).where(eq(cvSubmissions.id, id));
+  revalidatePath("/admin");
 }
