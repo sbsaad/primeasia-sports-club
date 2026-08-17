@@ -17,6 +17,7 @@ import {
   Cpu,
   FileText,
   ImageIcon,
+  Lock,
 } from "lucide-react";
 
 export type CardMemberData = {
@@ -457,7 +458,7 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
                   {member.fullName || "Student Name"}
                 </h3>
                 <div style={{ fontSize: "13px", color: "#38bdf8", fontWeight: 800, marginBottom: "2px" }}>
-                  ID: {member.studentId || "24200000"} · Sem {member.semester || 1}
+                  ID: {member.studentId || "24200000"}
                 </div>
                 <div
                   style={{
@@ -841,7 +842,7 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
                 {member.fullName || "Student Name"}
               </h3>
               <div style={{ fontSize: "13px", color: "#38bdf8", fontWeight: 800, marginBottom: "2px" }}>
-                ID: {member.studentId || "24200000"} · Sem {member.semester || 1}
+                ID: {member.studentId || "24200000"}
               </div>
               <div
                 style={{
@@ -1048,12 +1049,40 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
          ========================================================================= */}
       {isInteractive && (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%", maxWidth: "500px" }}>
-          {/* Main Action: Download Official Dual-Sided ID Card PDF (Exact 1:1 Pixel-Perfect) */}
+          {/* Status Message when not verified */}
+          {!isVerified && (
+            <div
+              style={{
+                fontSize: "12px",
+                color: isRejected ? "#fca5a5" : "#fef08a",
+                background: isRejected ? "rgba(239, 68, 68, 0.12)" : "rgba(245, 158, 11, 0.12)",
+                border: isRejected ? "1px dashed rgba(239, 68, 68, 0.4)" : "1px dashed rgba(245, 158, 11, 0.4)",
+                borderRadius: "10px",
+                padding: "9px 14px",
+                textAlign: "center",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                lineHeight: 1.4,
+              }}
+            >
+              <Lock size={14} color={isRejected ? "#f87171" : "#fbbf24"} style={{ flexShrink: 0 }} />
+              <span>
+                {isRejected
+                  ? "bKash payment verification was rejected. Please contact club administration to unlock your official card."
+                  : "Official ID Card (PDF & PNG) unlocks once club administrators verify your bKash payment. You can download your Registration Slip anytime."}
+              </span>
+            </div>
+          )}
+
+          {/* Main Action: Download Official Dual-Sided ID Card PDF */}
           <button
             type="button"
             onClick={handleDownloadIdCardPdf}
-            disabled={isDownloadingCard}
-            className="btn-neon-gold"
+            disabled={!isVerified || isDownloadingCard}
+            className={isVerified ? "btn-neon-gold" : ""}
+            title={isVerified ? "Download Official Dual-Sided ID Card PDF" : "Locked until payment verification is approved"}
             style={{
               width: "100%",
               fontSize: "13.5px",
@@ -1063,11 +1092,32 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
               justifyContent: "center",
               gap: "8px",
               fontWeight: 900,
-              boxShadow: "0 0 25px rgba(245, 158, 11, 0.4)",
+              borderRadius: "12px",
+              transition: "all 0.2s ease",
+              ...(isVerified
+                ? {
+                    boxShadow: "0 0 25px rgba(245, 158, 11, 0.4)",
+                    cursor: "pointer",
+                  }
+                : {
+                    background: "rgba(255, 255, 255, 0.05)",
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                    color: "#94a3b8",
+                    cursor: "not-allowed",
+                  }),
             }}
           >
-            <Sparkles size={17} color="#0b1730" />
-            {isDownloadingCard ? "Rendering 1:1 HD ID Card..." : "Download Official ID Card (Exact PDF)"}
+            {isVerified ? (
+              <>
+                <Sparkles size={17} color="#0b1730" />
+                {isDownloadingCard ? "Rendering 1:1 HD ID Card..." : "Download Official ID Card (Exact PDF)"}
+              </>
+            ) : (
+              <>
+                <Lock size={16} color="#fbbf24" />
+                {isRejected ? "Official ID Card · Locked (Payment Rejected)" : "Official ID Card (PDF) · Locked (Verification Pending)"}
+              </>
+            )}
           </button>
 
           {/* Secondary Actions: Flip Card, Download Images PNG, Download Registration Slip */}
@@ -1093,8 +1143,9 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
             <button
               type="button"
               onClick={handleDownloadImages}
-              disabled={isDownloadingImages}
+              disabled={!isVerified || isDownloadingImages}
               className="btn-outline"
+              title={isVerified ? "Save Front & Back HD PNG Images" : "Locked until payment verification is approved"}
               style={{
                 fontSize: "12px",
                 padding: "9px 10px",
@@ -1102,13 +1153,15 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
                 alignItems: "center",
                 justifyContent: "center",
                 gap: "5px",
-                borderColor: "rgba(245, 158, 11, 0.4)",
-                color: "#fbbf24",
+                borderColor: isVerified ? "rgba(245, 158, 11, 0.4)" : "rgba(255, 255, 255, 0.1)",
+                color: isVerified ? "#fbbf24" : "#64748b",
                 fontWeight: 800,
+                opacity: isVerified ? 1 : 0.45,
+                cursor: isVerified ? "pointer" : "not-allowed",
               }}
             >
-              <ImageIcon size={13} />
-              {isDownloadingImages ? "Exporting..." : "Save PNG"}
+              {isVerified ? <ImageIcon size={13} /> : <Lock size={12} />}
+              {isDownloadingImages ? "Exporting..." : isVerified ? "Save PNG" : "PNG (Locked)"}
             </button>
 
             <button

@@ -651,10 +651,10 @@ export function downloadIdCardPdf(data: MemberSlipData) {
   doc.setFontSize(7.5);
   doc.text(nameLines.slice(0, 1), 19.5, 16);
 
-  // Student ID & Semester
+  // Student ID (without semester)
   doc.setFontSize(6.2);
   doc.setTextColor(56, 189, 248); // Cyan
-  doc.text(`ID: ${data.studentId || "24200000"} · Sem ${data.semester || 1}`, 19.5, 20.5);
+  doc.text(`ID: ${data.studentId || "24200000"}`, 19.5, 20.5);
 
   // Department Name (cleanly wrapped to 48mm)
   const deptLines = doc.splitTextToSize(data.department || "Primeasia University", 48);
