@@ -980,7 +980,7 @@ export function downloadFinancialAuditPdf(
   doc.setFont("helvetica", "bold");
   doc.text("TOTAL VERIFIED TREASURY", margin + 4, curY + 5);
   doc.setFontSize(12);
-  doc.text(`৳${grandTotalVerifiedTreasury.toLocaleString()} BDT`, margin + 4, curY + 11.5);
+  doc.text(`${grandTotalVerifiedTreasury.toLocaleString()} BDT`, margin + 4, curY + 11.5);
   doc.setFontSize(6);
   doc.setFont("helvetica", "normal");
   doc.text(`${verifiedTransactions.length} Verified Transactions`, margin + 4, curY + 15.5);
@@ -995,10 +995,10 @@ export function downloadFinancialAuditPdf(
   doc.setFont("helvetica", "bold");
   doc.text("VERIFIED MEMBERSHIP DUES", margin + kpiW + 7, curY + 5);
   doc.setFontSize(11);
-  doc.text(`৳${verifiedMembershipTotal.toLocaleString()} BDT`, margin + kpiW + 7, curY + 11.5);
+  doc.text(`${verifiedMembershipTotal.toLocaleString()} BDT`, margin + kpiW + 7, curY + 11.5);
   doc.setFontSize(6);
   doc.setFont("helvetica", "normal");
-  doc.text(`${verifiedMembers.length} Members @ ৳${memFee} BDT`, margin + kpiW + 7, curY + 15.5);
+  doc.text(`${verifiedMembers.length} Members @ ${memFee} BDT`, margin + kpiW + 7, curY + 15.5);
 
   // KPI 3: Donations & Patrons
   doc.setFillColor(240, 249, 255); // Light Blue
@@ -1010,7 +1010,7 @@ export function downloadFinancialAuditPdf(
   doc.setFont("helvetica", "bold");
   doc.text("DONATIONS & CONTRIBUTIONS", margin + (kpiW + 3) * 2 + 4, curY + 5);
   doc.setFontSize(11);
-  doc.text(`৳${verifiedDonationTotal.toLocaleString()} BDT`, margin + (kpiW + 3) * 2 + 4, curY + 11.5);
+  doc.text(`${verifiedDonationTotal.toLocaleString()} BDT`, margin + (kpiW + 3) * 2 + 4, curY + 11.5);
   doc.setFontSize(6);
   doc.setFont("helvetica", "normal");
   doc.text(`${verifiedDonations.length} Verified Donations`, margin + (kpiW + 3) * 2 + 4, curY + 15.5);
@@ -1025,7 +1025,7 @@ export function downloadFinancialAuditPdf(
   doc.setFont("helvetica", "bold");
   doc.text("PENDING REQUESTS (NOT IN TREASURY)", margin + (kpiW + 3) * 3 + 4, curY + 5);
   doc.setFontSize(11);
-  doc.text(`৳${totalPendingRequests.toLocaleString()} BDT`, margin + (kpiW + 3) * 3 + 4, curY + 11.5);
+  doc.text(`${totalPendingRequests.toLocaleString()} BDT`, margin + (kpiW + 3) * 3 + 4, curY + 11.5);
   doc.setFontSize(6);
   doc.setFont("helvetica", "normal");
   doc.text(`${pendingMembers.length + pendingDonations.length} Pending Review`, margin + (kpiW + 3) * 3 + 4, curY + 15.5);
@@ -1069,11 +1069,11 @@ export function downloadFinancialAuditPdf(
 
     doc.setFont("helvetica", "bold");
     doc.setTextColor(22, 101, 52); // Green
-    doc.text(`৳${stats.verifiedAmt.toLocaleString()} BDT`, margin + 140, curY + 3.8);
+    doc.text(`${stats.verifiedAmt.toLocaleString()} BDT`, margin + 140, curY + 3.8);
 
     doc.setTextColor(153, 27, 27); // Red
     doc.setFont("helvetica", "normal");
-    doc.text(`৳${stats.pendingAmt.toLocaleString()} BDT`, margin + 195, curY + 3.8);
+    doc.text(`${stats.pendingAmt.toLocaleString()} BDT`, margin + 195, curY + 3.8);
 
     const share = grandTotalVerifiedTreasury > 0 ? ((stats.verifiedAmt / grandTotalVerifiedTreasury) * 100).toFixed(1) : "0.0";
     doc.setTextColor(15, 23, 42);
@@ -1093,9 +1093,9 @@ export function downloadFinancialAuditPdf(
   doc.text("GRAND TOTAL RECONCILED TREASURY", margin + 4, curY + 4.2);
   doc.text(String(verifiedTransactions.length), margin + 105, curY + 4.2);
   doc.setTextColor(22, 101, 52);
-  doc.text(`৳${grandTotalVerifiedTreasury.toLocaleString()} BDT`, margin + 140, curY + 4.2);
+  doc.text(`${grandTotalVerifiedTreasury.toLocaleString()} BDT`, margin + 140, curY + 4.2);
   doc.setTextColor(153, 27, 27);
-  doc.text(`৳${totalPendingRequests.toLocaleString()} BDT`, margin + 195, curY + 4.2);
+  doc.text(`${totalPendingRequests.toLocaleString()} BDT`, margin + 195, curY + 4.2);
   doc.setTextColor(11, 23, 48);
   doc.text("100.0%", margin + 250, curY + 4.2);
 
@@ -1178,7 +1178,7 @@ export function downloadFinancialAuditPdf(
     doc.text(t.trxId, ledgerCols[5].x, curY + 4);
 
     doc.setTextColor(22, 101, 52);
-    doc.text(`৳${t.amount.toLocaleString()} BDT`, ledgerCols[6].x, curY + 4);
+    doc.text(`${t.amount.toLocaleString()} BDT`, ledgerCols[6].x, curY + 4);
 
     doc.setTextColor(100, 116, 139);
     doc.setFont("helvetica", "normal");

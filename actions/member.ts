@@ -132,6 +132,9 @@ export async function registerMember(
         .where(eq(memberRegistrations.userId, dbUser.id));
     }
 
+    const feeSetting = await db.select().from(settings).where(eq(settings.key, "membership_fee_bdt")).limit(1);
+    const activeMembershipFee = feeSetting[0]?.value || "200";
+
     const inserted = await db
       .insert(memberRegistrations)
       .values({
@@ -151,7 +154,7 @@ export async function registerMember(
         bkashNumber: (data.bkashNumber || "").trim(),
         transactionId: data.transactionId.trim().toUpperCase(),
         paymentSlipUrl: (data.paymentSlipUrl || "").trim(),
-        paymentAmount: "200",
+        paymentAmount: activeMembershipFee,
         paymentStatus: "pending",
         isFlagged: Boolean(
           data.isFlagged ||

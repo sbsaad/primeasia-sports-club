@@ -55,6 +55,8 @@ interface Props {
   userEmail?: string;
   userName?: string;
   userAvatar?: string | null;
+  membershipFee?: string;
+  validityLabel?: string;
 }
 
 type FormStep = 1 | 2 | 3 | 4;
@@ -64,6 +66,8 @@ export default function MemberRegistrationForm({
   userEmail = "",
   userName = "",
   userAvatar = null,
+  membershipFee = "200",
+  validityLabel = "SEASON 2026-2027",
 }: Props) {
   const isVerified = existingMember?.paymentStatus === "verified";
   const [step, setStep] = useState<FormStep>(existingMember ? 4 : 1);
@@ -146,8 +150,7 @@ export default function MemberRegistrationForm({
   };
 
   const copyBkashGuide = () => {
-    const text =
-      "bKash App ➔ Education Fee (শিক্ষা ফি) ➔ Primeasia University ➔ Others (Fee: 200 BDT) ➔ Enter Student ID and complete payment.";
+    const text = `bKash App ➔ Education Fee (শিক্ষা ফি) ➔ Primeasia University ➔ Others (Fee: ${membershipFee} BDT) ➔ Enter Student ID and complete payment.`;
     navigator.clipboard.writeText(text);
     setCopiedText(true);
     setTimeout(() => setCopiedText(false), 2500);
@@ -442,7 +445,7 @@ export default function MemberRegistrationForm({
           {[
             { s: 1, label: "Student Details", icon: <User size={16} /> },
             { s: 2, label: "Sports & Apparel", icon: <Trophy size={16} /> },
-            { s: 3, label: "bKash Fee (200 ৳)", icon: <CreditCard size={16} /> },
+            { s: 3, label: `bKash Fee (${membershipFee} ৳)`, icon: <CreditCard size={16} /> },
             { s: 4, label: "Review & Pass", icon: <Sparkles size={16} /> },
           ].map((item) => {
             const isDone = step > item.s;
@@ -906,7 +909,7 @@ export default function MemberRegistrationForm({
             </div>
             <div>
               <h2 style={{ fontSize: "19px", fontWeight: 800, margin: 0, color: "#ffffff" }}>
-                Step 3: Official bKash Fee Payment (200 BDT)
+                Step 3: Official bKash Fee Payment ({membershipFee} BDT)
               </h2>
               <p style={{ fontSize: "13px", color: "#cbd5e1", margin: "2px 0 0" }}>
                 Scan receipt screenshot or paste SMS text to automatically verify and fill your TrxID!
@@ -930,7 +933,7 @@ export default function MemberRegistrationForm({
                 <span style={{ fontWeight: 800, fontSize: "16px", color: "#f472b6" }}>bKash Payment Steps</span>
               </div>
               <span style={{ fontSize: "13px", fontWeight: 800, color: "#fef08a", background: "rgba(245,158,11,0.2)", padding: "4px 10px", borderRadius: "8px" }}>
-                Fee: 200 BDT
+                Fee: {membershipFee} BDT
               </span>
             </div>
 
@@ -938,7 +941,7 @@ export default function MemberRegistrationForm({
               <li>Open your <strong>bKash App</strong> and tap on <strong>Education Fee (শিক্ষা ফি)</strong>.</li>
               <li>Search and select <strong>Primeasia University</strong>.</li>
               <li>Choose <strong>Others</strong> (or Club/Registration Fee).</li>
-              <li>Enter your Student ID (<strong>{studentId || "Your 9-Digit ID"}</strong>) and pay <strong>200 BDT</strong>.</li>
+              <li>Enter your Student ID (<strong>{studentId || "Your 9-Digit ID"}</strong>) and pay <strong>{membershipFee} BDT</strong>.</li>
               <li>Copy the <strong>Transaction ID (TrxID)</strong> or scan receipt below.</li>
             </ol>
 
@@ -1267,10 +1270,11 @@ export default function MemberRegistrationForm({
                 emergencyContact,
                 bkashNumber,
                 transactionId: transactionId || "TRX123456",
-                paymentAmount: "200",
+                paymentAmount: membershipFee,
                 paymentStatus: existingMember?.paymentStatus || "pending",
                 registeredAt: existingMember?.registeredAt || new Date(),
                 userAvatar,
+                validityLabel,
               }}
             />
           </div>

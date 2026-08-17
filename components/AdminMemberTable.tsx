@@ -10,7 +10,7 @@ import {
   deleteMember,
   saveClubFullSettings,
   updateDonationStatus,
-  resetAllMemberData,
+  revokeAllMemberships,
 } from "@/actions/admin";
 import { exportMembersToExcel, exportFinancialAuditToExcel } from "@/lib/export-excel";
 import {
@@ -41,6 +41,8 @@ import {
   Landmark,
   CircleDollarSign,
   PieChart,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react";
 
 interface Props {
@@ -93,10 +95,10 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
   // Inspect Modal
   const [selectedMember, setSelectedMember] = useState<AdminMemberRow | null>(null);
 
-  // Reset Modal
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [resetConfirmText, setResetConfirmText] = useState("");
-  const [isResetting, setIsResetting] = useState(false);
+  // Revoke Modal
+  const [showRevokeModal, setShowRevokeModal] = useState(false);
+  const [revokeConfirmText, setRevokeConfirmText] = useState("");
+  const [isRevoking, setIsRevoking] = useState(false);
 
   // Status updating state
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -265,8 +267,8 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
         durationMonths,
         membershipFee: membershipFee.trim(),
       });
-      setSettingsMessage("✅ Club & Pass Validity Settings updated successfully!");
-      setTimeout(() => setSettingsMessage(""), 3500);
+      setSettingsMessage("✅ Club & Pass Validity Settings updated successfully! All registration fees reflect immediately.");
+      setTimeout(() => setSettingsMessage(""), 4000);
     } catch {
       setSettingsMessage("❌ Failed to save settings.");
     } finally {
@@ -274,19 +276,22 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
     }
   };
 
-  const handleResetDatabase = async () => {
-    if (resetConfirmText !== "RESET PAUSC 2026") return;
-    setIsResetting(true);
+  const handleRevokeAllMemberships = async () => {
+    if (revokeConfirmText !== "REVOKE ALL FOR NEW SEASON") return;
+    setIsRevoking(true);
     try {
-      await resetAllMemberData();
-      alert("Member database cleared successfully!");
+      await revokeAllMemberships({
+        newMembershipFee: membershipFee.trim(),
+        newValidityLabel: validityLabel.trim(),
+      });
+      alert(`Success! All memberships have been reset to PENDING for ${validityLabel}. Members will now be prompted to pay ৳${membershipFee} BDT on their dashboard to reactivate.`);
       window.location.reload();
     } catch (err: unknown) {
-      alert("Reset failed: " + (err instanceof Error ? err.message : String(err)));
+      alert("Revocation failed: " + (err instanceof Error ? err.message : String(err)));
     } finally {
-      setIsResetting(false);
-      setShowResetModal(false);
-      setResetConfirmText("");
+      setIsRevoking(false);
+      setShowRevokeModal(false);
+      setRevokeConfirmText("");
     }
   };
 
@@ -365,7 +370,7 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
             color: activeTab === "treasury" ? "#86efac" : "#cbd5e1",
           }}
         >
-          <Landmark size={16} /> Treasury &amp; Financial Audit (৳{grandTotalVerifiedTreasury.toLocaleString()})
+          <Landmark size={16} /> Treasury &amp; Financial Audit (BDT {grandTotalVerifiedTreasury.toLocaleString()})
         </button>
 
         <button
@@ -592,12 +597,12 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
                 <table className="admin-table">
                   <thead>
                     <tr>
-                      <th style={{ width: "26%" }}>Member Name</th>
-                      <th style={{ width: "16%" }}>Student ID</th>
-                      <th style={{ width: "20%" }}>Department</th>
-                      <th style={{ width: "16%" }}>bKash TrxID</th>
+                      <th style={{ width: "24%" }}>Member Name</th>
+                      <th style={{ width: "15%" }}>Student ID</th>
+                      <th style={{ width: "18%" }}>Department</th>
+                      <th style={{ width: "15%" }}>bKash TrxID</th>
                       <th style={{ width: "12%" }}>Status</th>
-                      <th style={{ width: "10%", textAlign: "right" }}>Actions</th>
+                      <th style={{ width: "16%", textAlign: "right" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -746,7 +751,7 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
                                     fontWeight: 800,
                                   }}
                                 >
-                                  ✓ Approve Renewal
+                                  ✓ Approve
                                 </button>
                               ) : !isRowVerified ? (
                                 <button
@@ -787,8 +792,10 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
                                 </button>
                               )}
 
+                              {/* Inspect Button */}
                               <button
                                 type="button"
+                                title="View Member Card & Slip"
                                 onClick={() => setSelectedMember(m)}
                                 style={{
                                   background: "rgba(255, 255, 255, 0.08)",
@@ -800,6 +807,23 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
                                 }}
                               >
                                 <Eye size={13} />
+                              </button>
+
+                              {/* Individual Member Delete Button */}
+                              <button
+                                type="button"
+                                title="Delete Member Record"
+                                onClick={() => handleDelete(m.id, m.fullName)}
+                                style={{
+                                  background: "rgba(239, 68, 68, 0.12)",
+                                  border: "1px solid rgba(239, 68, 68, 0.35)",
+                                  borderRadius: "6px",
+                                  padding: "4px 6px",
+                                  color: "#f87171",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                <Trash2 size={13} />
                               </button>
                             </div>
                           </td>
@@ -1269,136 +1293,195 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
 
       {/* ================= TAB 4: VALIDITY & SEASON SETTINGS ================= */}
       {activeTab === "settings" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
-          {/* Pass Validity & Duration Settings */}
-          <div className="glass-card" style={{ padding: "20px 24px" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 800, marginBottom: "14px", display: "flex", alignItems: "center", gap: "8px", color: "#fbbf24" }}>
-              <SettingsIcon size={18} />
-              Pass Validity &amp; Duration Setup
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%", maxWidth: "100%", boxSizing: "border-box" }}>
+          
+          {/* Top Info Banner */}
+          <div
+            className="glass-card"
+            style={{
+              padding: "16px 20px",
+              border: "1px solid rgba(245, 158, 11, 0.3)",
+              background: "rgba(245, 158, 11, 0.06)",
+              borderRadius: "12px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <Sparkles size={20} color="#fbbf24" style={{ flexShrink: 0 }} />
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "4px" }}>
-                  ID Card Pass Validity Label (Front &amp; PDF):
-                </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={validityLabel}
-                  onChange={(e) => setValidityLabel(e.target.value)}
-                  placeholder="e.g. SEASON 2026-2027 or VALID THRU: DEC 2026"
-                  style={{ fontSize: "13px" }}
-                />
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "4px" }}>
-                    Duration (Months):
-                  </label>
-                  <input
-                    type="number"
-                    className="input-field"
-                    value={durationMonths}
-                    onChange={(e) => setDurationMonths(parseInt(e.target.value, 10) || 12)}
-                    min={1}
-                    max={48}
-                    style={{ fontSize: "13px" }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "4px" }}>
-                    Membership Fee (BDT):
-                  </label>
-                  <input
-                    type="number"
-                    className="input-field"
-                    value={membershipFee}
-                    onChange={(e) => setMembershipFee(e.target.value)}
-                    style={{ fontSize: "13px" }}
-                  />
-                </div>
+                <h4 style={{ margin: 0, fontSize: "14px", fontWeight: 800, color: "#fef08a" }}>
+                  Official Club Season &amp; Fee Management
+                </h4>
+                <p style={{ margin: "2px 0 0", fontSize: "12.5px", color: "#cbd5e1", lineHeight: 1.4 }}>
+                  Changes to Membership Fee and Pass Validity update the student registration portal and dashboard automatically.
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Registration Window */}
-          <div className="glass-card" style={{ padding: "20px 24px" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 800, marginBottom: "14px", display: "flex", alignItems: "center", gap: "8px", color: "#38bdf8" }}>
-              <Calendar size={18} />
-              Registration Window Dates
-            </h3>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "4px" }}>
-                  Window Start:
-                </label>
-                <input
-                  type="datetime-local"
-                  className="input-field"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  style={{ fontSize: "12px" }}
-                />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "20px", width: "100%" }}>
+            
+            {/* Card 1: Pass Validity & Duration Settings */}
+            <div className="glass-card" style={{ padding: "22px 24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "12px" }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: "8px", color: "#fbbf24" }}>
+                  <SettingsIcon size={18} />
+                  Pass Validity &amp; Fee Configuration
+                </h3>
+                <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-muted)" }}>
+                  Configure what displays on ID cards and how much athletes pay.
+                </p>
               </div>
-              <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--text-muted)", marginBottom: "4px" }}>
-                  Window End:
-                </label>
-                <input
-                  type="datetime-local"
-                  className="input-field"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  style={{ fontSize: "12px" }}
-                />
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#cbd5e1", marginBottom: "6px" }}>
+                    ID Card Pass Validity Label:
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={validityLabel}
+                    onChange={(e) => setValidityLabel(e.target.value)}
+                    placeholder="e.g. SEASON 2026-2027 or VALID THRU: DEC 2026"
+                    style={{ fontSize: "13px", width: "100%", boxSizing: "border-box" }}
+                  />
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "3px", display: "block" }}>
+                    Shown on holographic card front and verified PDF passes.
+                  </span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#cbd5e1", marginBottom: "6px" }}>
+                      Duration (Months):
+                    </label>
+                    <input
+                      type="number"
+                      className="input-field"
+                      value={durationMonths}
+                      onChange={(e) => setDurationMonths(parseInt(e.target.value, 10) || 12)}
+                      min={1}
+                      max={48}
+                      style={{ fontSize: "13px", width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#cbd5e1", marginBottom: "6px" }}>
+                      Membership Fee (BDT):
+                    </label>
+                    <input
+                      type="number"
+                      className="input-field"
+                      value={membershipFee}
+                      onChange={(e) => setMembershipFee(e.target.value)}
+                      style={{ fontSize: "13px", width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <button
-              onClick={handleSaveFullSettings}
-              disabled={isSavingSettings}
-              className="btn-gold"
-              style={{ width: "100%", padding: "10px", fontSize: "13.5px" }}
-            >
-              {isSavingSettings ? "Saving Settings..." : "Save All Club Settings"}
-            </button>
-
-            {settingsMessage && (
-              <div style={{ fontSize: "12px", marginTop: "8px", textAlign: "center", color: "#86efac", fontWeight: 700 }}>
-                {settingsMessage}
+            {/* Card 2: Registration Window */}
+            <div className="glass-card" style={{ padding: "22px 24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "12px" }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: "8px", color: "#38bdf8" }}>
+                  <Calendar size={18} />
+                  Official Registration Window
+                </h3>
+                <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-muted)" }}>
+                  Registration is locked for students outside these dates.
+                </p>
               </div>
-            )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#cbd5e1", marginBottom: "6px" }}>
+                    Registration Start Date &amp; Time:
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className="input-field"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    style={{ fontSize: "12.5px", width: "100%", boxSizing: "border-box" }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#cbd5e1", marginBottom: "6px" }}>
+                    Registration Deadline Date &amp; Time:
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className="input-field"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    style={{ fontSize: "12.5px", width: "100%", boxSizing: "border-box" }}
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleSaveFullSettings}
+                disabled={isSavingSettings}
+                className="btn-gold"
+                style={{ width: "100%", padding: "11px", fontSize: "13.5px", marginTop: "auto" }}
+              >
+                {isSavingSettings ? "Saving Settings..." : "Save All Club Settings"}
+              </button>
+
+              {settingsMessage && (
+                <div style={{ fontSize: "12px", textAlign: "center", color: "#86efac", fontWeight: 700, lineHeight: 1.4 }}>
+                  {settingsMessage}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Database Reset */}
-          <div className="glass-card" style={{ padding: "20px 24px", borderColor: "rgba(239, 68, 68, 0.4)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 800, marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px", color: "#f87171" }}>
-              <Trash2 size={18} />
-              Danger Zone: Wipe All Records
-            </h3>
-            <p style={{ fontSize: "12.5px", color: "#cbd5e1", lineHeight: 1.4, marginBottom: "14px" }}>
-              Resetting will erase all member applications, donations, and bKash transaction records for season transition.
-            </p>
-            <button
-              onClick={() => setShowResetModal(true)}
-              style={{
-                width: "100%",
-                background: "rgba(239, 68, 68, 0.15)",
-                border: "1.5px solid #ef4444",
-                color: "#f87171",
-                padding: "9px",
-                borderRadius: "8px",
-                fontSize: "12.5px",
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              Reset Member Database
-            </button>
+          {/* Card 3: New Season Transition & Revoke All Memberships */}
+          <div
+            className="glass-card"
+            style={{
+              padding: "22px 24px",
+              borderColor: "rgba(234, 179, 8, 0.4)",
+              background: "linear-gradient(135deg, rgba(234, 179, 8, 0.08) 0%, rgba(13, 21, 39, 0.8) 100%)",
+              borderRadius: "14px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px", marginBottom: "12px" }}>
+              <div>
+                <h3 style={{ fontSize: "16px", fontWeight: 800, margin: 0, display: "flex", alignItems: "center", gap: "8px", color: "#fef08a" }}>
+                  <RefreshCw size={18} />
+                  New Season Transition &amp; Membership Revocation
+                </h3>
+                <p style={{ fontSize: "12.5px", color: "#cbd5e1", marginTop: "6px", lineHeight: 1.5, maxWidth: "700px" }}>
+                  When a new athletic season begins, click below to set all athlete memberships to <strong>PENDING</strong>.
+                  All member personal information, sports selections, and student records are <strong>safely preserved</strong>.
+                  Athletes will be prompted on their dashboard to pay the new season membership fee (<strong>৳{membershipFee} BDT</strong>) to reactivate their pass for <strong>{validityLabel}</strong>.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowRevokeModal(true)}
+                style={{
+                  background: "rgba(234, 179, 8, 0.2)",
+                  border: "1.5px solid #eab308",
+                  color: "#fef08a",
+                  padding: "10px 18px",
+                  borderRadius: "10px",
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "7px",
+                  boxShadow: "0 0 15px rgba(234, 179, 8, 0.2)",
+                }}
+              >
+                <RefreshCw size={15} /> Revoke All for New Season
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1624,8 +1707,8 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
         </div>
       )}
 
-      {/* Database Wipe Reset Modal */}
-      {showResetModal && (
+      {/* Revoke All Memberships Modal */}
+      {showRevokeModal && (
         <div
           style={{
             position: "fixed",
@@ -1645,52 +1728,53 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
           <div
             className="glass-card animate-fade-in-up"
             style={{
-              maxWidth: "460px",
+              maxWidth: "480px",
               width: "100%",
               padding: "24px",
-              border: "1.5px solid #ef4444",
+              border: "1.5px solid #eab308",
               background: "#0d1527",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#f87171", marginBottom: "12px" }}>
-              <AlertTriangle size={22} />
-              <h3 style={{ fontSize: "17px", fontWeight: 800, margin: 0 }}>Reset Member Database</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#fbbf24", marginBottom: "12px" }}>
+              <RefreshCw size={22} />
+              <h3 style={{ fontSize: "17px", fontWeight: 800, margin: 0 }}>Revoke Memberships for New Season</h3>
             </div>
             <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "14px" }}>
-              This will permanently delete <strong>all registered members and their bKash transaction data</strong>.
+              This will set all athlete membership statuses to <strong>PENDING</strong> for <strong>{validityLabel}</strong>.
+              Athletes will see an alert on their dashboard to pay <strong>৳{membershipFee} BDT</strong> to renew their pass. All user profiles and sports data remain preserved.
             </p>
             <div style={{ marginBottom: "16px" }}>
               <label style={{ display: "block", fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>
-                Type <strong style={{ color: "#fbbf24" }}>RESET PAUSC 2026</strong> to confirm:
+                Type <strong style={{ color: "#fbbf24" }}>REVOKE ALL FOR NEW SEASON</strong> to confirm:
               </label>
               <input
                 type="text"
                 className="input-field"
-                value={resetConfirmText}
-                onChange={(e) => setResetConfirmText(e.target.value)}
-                placeholder="RESET PAUSC 2026"
-                style={{ borderColor: "#ef4444" }}
+                value={revokeConfirmText}
+                onChange={(e) => setRevokeConfirmText(e.target.value)}
+                placeholder="REVOKE ALL FOR NEW SEASON"
+                style={{ borderColor: "#eab308" }}
               />
             </div>
             <div style={{ display: "flex", gap: "8px" }}>
               <button
-                onClick={handleResetDatabase}
-                disabled={resetConfirmText !== "RESET PAUSC 2026" || isResetting}
+                onClick={handleRevokeAllMemberships}
+                disabled={revokeConfirmText !== "REVOKE ALL FOR NEW SEASON" || isRevoking}
                 style={{
                   flex: 1,
-                  background: resetConfirmText === "RESET PAUSC 2026" ? "#ef4444" : "rgba(239,68,68,0.2)",
-                  color: "#ffffff",
+                  background: revokeConfirmText === "REVOKE ALL FOR NEW SEASON" ? "#eab308" : "rgba(234,179,8,0.2)",
+                  color: "#0c1527",
                   border: "none",
                   borderRadius: "8px",
                   padding: "9px",
-                  fontWeight: 800,
+                  fontWeight: 900,
                   fontSize: "12.5px",
-                  cursor: resetConfirmText === "RESET PAUSC 2026" ? "pointer" : "not-allowed",
+                  cursor: revokeConfirmText === "REVOKE ALL FOR NEW SEASON" ? "pointer" : "not-allowed",
                 }}
               >
-                {isResetting ? "Wiping Database..." : "Permanently Wipe Data"}
+                {isRevoking ? "Revoking Memberships..." : "Confirm & Revoke All"}
               </button>
-              <button onClick={() => setShowResetModal(false)} className="btn-outline" style={{ padding: "9px 16px", fontSize: "12.5px" }}>
+              <button onClick={() => setShowRevokeModal(false)} className="btn-outline" style={{ padding: "9px 16px", fontSize: "12.5px" }}>
                 Cancel
               </button>
             </div>

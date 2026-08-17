@@ -320,6 +320,50 @@ export async function getRegistrationSettings() {
   }
 }
 
+export async function revokeAllMemberships(options?: {
+  newMembershipFee?: string;
+  newValidityLabel?: string;
+}) {
+  const session = await auth();
+  requireAdmin(session?.user?.email);
+
+  // Set all member registrations to pending
+  await db
+    .update(memberRegistrations)
+    .set({
+      paymentStatus: "pending",
+      updatedAt: new Date(),
+    });
+
+  // Optionally update fee and validity label in settings
+  if (options?.newMembershipFee) {
+    await db
+      .insert(settings)
+      .values({ key: "membership_fee_bdt", value: options.newMembershipFee.trim() })
+      .onConflictDoUpdate({
+        target: settings.key,
+        set: { value: options.newMembershipFee.trim() },
+      });
+  }
+
+  if (options?.newValidityLabel) {
+    await db
+      .insert(settings)
+      .values({ key: "membership_validity_label", value: options.newValidityLabel.trim() })
+      .onConflictDoUpdate({
+        target: settings.key,
+        set: { value: options.newValidityLabel.trim() },
+      });
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/dashboard");
+  revalidatePath("/register");
+  revalidatePath("/");
+
+  return { success: true };
+}
+
 export async function resetAllMemberData() {
   const session = await auth();
   requireAdmin(session?.user?.email);

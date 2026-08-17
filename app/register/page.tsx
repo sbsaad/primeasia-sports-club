@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import MemberRegistrationForm from "@/components/MemberRegistrationForm";
-import { getMyRegistration, getMemberRegistrationDates } from "@/actions/member";
+import { getMyRegistration, getMemberRegistrationDates, getClubSettings } from "@/actions/member";
 import ThreeSportsBackground from "@/components/ThreeSportsBackground";
 import Link from "next/link";
 import { Sparkles, Calendar, Lock } from "lucide-react";
@@ -19,8 +19,9 @@ export default async function RegisterPage() {
 
   const isAdmin = ADMIN_EMAILS.includes(session.user.email?.toLowerCase() ?? "");
 
-  // Date Check
+  // Settings & Date Check
   const dates = await getMemberRegistrationDates();
+  const clubSettings = await getClubSettings();
   const now = new Date();
   let isRegistrationClosed = false;
 
@@ -96,6 +97,8 @@ export default async function RegisterPage() {
               userEmail={session.user.email ?? ""}
               userName={session.user.name ?? ""}
               userAvatar={session.user.image}
+              membershipFee={clubSettings.membershipFee}
+              validityLabel={clubSettings.validityLabel}
             />
           </>
         )}

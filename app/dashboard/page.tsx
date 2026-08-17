@@ -329,7 +329,7 @@ export default async function DashboardPage() {
                 You have not registered for 2026 Membership yet!
               </h2>
               <p style={{ color: "#cbd5e1", fontSize: "14.5px", maxWidth: "520px", margin: "0 auto 24px", lineHeight: 1.6 }}>
-                Complete the registration form with your student ID, sports preferences, and 200 BDT bKash transaction ID to receive your official PaUGSC 3D member pass.
+                Complete the registration form with your student ID, sports preferences, and {clubSettings.membershipFee} BDT bKash transaction ID to receive your official PaUGSC 3D member pass.
               </p>
 
               {isRegistrationClosed ? (
