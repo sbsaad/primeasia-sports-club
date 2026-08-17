@@ -67,49 +67,49 @@ export default async function LandingPage() {
 
   return (
     <main className="min-h-screen flex flex-col" style={{ position: "relative", overflowX: "hidden" }}>
-      {/* 3D WebGL Sports Canvas */}
+      {/* 3D WebGL Sports Canvas with Responsive Touch and Particle Glow */}
       <ThreeSportsBackground />
 
       {/* Navigation Header */}
       <nav
-        className="glass-card mx-4 mt-4 px-5 py-3 flex items-center justify-between"
-        style={{ borderRadius: "14px", position: "relative", zIndex: 10 }}
+        className="glass-card mx-3 sm:mx-4 mt-3 sm:mt-4 px-4 sm:px-5 py-3 flex items-center justify-between"
+        style={{ borderRadius: "16px", position: "relative", zIndex: 10 }}
       >
         <div className="flex items-center gap-3">
           <div
             style={{
-              width: 44,
-              height: 44,
+              width: 42,
+              height: 42,
               borderRadius: "12px",
-              background: "linear-gradient(135deg, var(--gold), var(--gold-light))",
+              background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: "22px",
-              boxShadow: "0 0 16px rgba(201,162,39,0.45)",
+              boxShadow: "0 0 18px rgba(245,158,11,0.5)",
               flexShrink: 0,
             }}
           >
             ⚽
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: "14px", color: "var(--text-primary)", lineHeight: 1.2 }}>
+            <div style={{ fontWeight: 800, fontSize: "13.5px", color: "var(--text-primary)", lineHeight: 1.2 }}>
               Primeasia University
             </div>
-            <div style={{ fontSize: "10.5px", color: "var(--gold)", fontWeight: 700, letterSpacing: "0.05em" }}>
+            <div style={{ fontSize: "10px", color: "var(--gold-light)", fontWeight: 800, letterSpacing: "0.05em" }}>
               GAMES AND SPORTS CLUB (PaUGSC)
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <form
             action={async () => {
               "use server";
               await signIn("google", { redirectTo: "/dashboard" });
             }}
           >
-            <button type="submit" className="btn-outline" style={{ fontSize: "12.5px", padding: "8px 18px" }}>
+            <button type="submit" className="btn-outline" style={{ fontSize: "12px", padding: "8px 14px" }}>
               Sign In with Google
             </button>
           </form>
@@ -118,7 +118,7 @@ export default async function LandingPage() {
 
       {/* Hero Section */}
       <section
-        className="flex-1 flex flex-col items-center justify-center px-4 py-16 text-center"
+        className="flex-1 flex flex-col items-center justify-center px-4 py-12 sm:py-16 text-center"
         style={{ position: "relative", zIndex: 5 }}
       >
         {/* Pulsing Decorative Rings */}
@@ -130,7 +130,7 @@ export default async function LandingPage() {
             transform: "translate(-50%, -50%)",
             width: "720px",
             height: "720px",
-            border: "1px solid rgba(201,162,39,0.08)",
+            border: "1px solid rgba(245,158,11,0.15)",
             borderRadius: "50%",
             pointerEvents: "none",
             zIndex: 0,
@@ -145,7 +145,7 @@ export default async function LandingPage() {
             transform: "translate(-50%, -50%)",
             width: "500px",
             height: "500px",
-            border: "1px solid rgba(79,142,247,0.08)",
+            border: "1px solid rgba(56,189,248,0.18)",
             borderRadius: "50%",
             pointerEvents: "none",
             zIndex: 0,
@@ -157,7 +157,7 @@ export default async function LandingPage() {
           {/* Badge */}
           <div
             className="badge badge-gold animate-slide-up"
-            style={{ marginBottom: "20px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+            style={{ marginBottom: "18px", display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
             <Sparkles size={14} className="animate-trophy-bounce" />
             <span>General Member Recruitment 2026 · All Departments Welcome</span>
@@ -167,7 +167,7 @@ export default async function LandingPage() {
           <h1
             className="animate-slide-up"
             style={{
-              fontSize: "clamp(2.5rem, 6.5vw, 4.4rem)",
+              fontSize: "clamp(2.4rem, 6.5vw, 4.4rem)",
               fontWeight: 900,
               lineHeight: 1.05,
               marginBottom: "16px",
@@ -202,19 +202,20 @@ export default async function LandingPage() {
           )}
 
           {/* CTA Action */}
-          <div className="animate-slide-up" style={{ animationDelay: "0.24s" }}>
+          <div className="animate-slide-up" style={{ animationDelay: "0.24s", maxWidth: "420px", margin: "0 auto" }}>
             {isRegistrationClosed ? (
-              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+              <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "100%" }}>
                 <div
                   className="glass-card"
                   style={{
                     display: "inline-block",
-                    padding: "16px 32px",
-                    borderColor: "rgba(239,68,68,0.3)",
-                    background: "rgba(239,68,68,0.06)",
+                    padding: "16px 28px",
+                    borderColor: "rgba(239,68,68,0.4)",
+                    background: "rgba(239,68,68,0.1)",
                     color: "#fca5a5",
-                    fontSize: "15px",
+                    fontSize: "14px",
                     fontWeight: 600,
+                    width: "100%",
                   }}
                 >
                   🔒 Member registration window is currently closed.
@@ -246,8 +247,9 @@ export default async function LandingPage() {
                   "use server";
                   await signIn("google", { redirectTo: "/dashboard" });
                 }}
+                style={{ width: "100%" }}
               >
-                <button type="submit" className="btn-neon-gold" style={{ fontSize: "16px", padding: "16px 36px" }}>
+                <button type="submit" className="btn-neon-gold" style={{ fontSize: "15px", padding: "16px 28px", width: "100%" }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
                     <path
                       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -280,9 +282,9 @@ export default async function LandingPage() {
           width: "100%",
           position: "relative",
           zIndex: 5,
-          borderTop: "1px solid rgba(201,162,39,0.15)",
-          borderBottom: "1px solid rgba(201,162,39,0.15)",
-          background: "rgba(201,162,39,0.03)",
+          borderTop: "1px solid rgba(245,158,11,0.25)",
+          borderBottom: "1px solid rgba(245,158,11,0.25)",
+          background: "rgba(245,158,11,0.06)",
           padding: "12px 0",
           overflow: "hidden",
         }}
@@ -294,8 +296,8 @@ export default async function LandingPage() {
                 key={i}
                 style={{
                   fontSize: "12px",
-                  fontWeight: 700,
-                  color: "var(--gold)",
+                  fontWeight: 800,
+                  color: "var(--gold-light)",
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
                   marginRight: "48px",
@@ -310,7 +312,7 @@ export default async function LandingPage() {
       </div>
 
       {/* Stats Section */}
-      <section style={{ padding: "70px 16px 20px", maxWidth: "960px", margin: "0 auto", width: "100%", position: "relative", zIndex: 5 }}>
+      <section style={{ padding: "60px 16px 20px", maxWidth: "960px", margin: "0 auto", width: "100%", position: "relative", zIndex: 5 }}>
         <h2
           style={{
             textAlign: "center",
@@ -322,10 +324,10 @@ export default async function LandingPage() {
         >
           PaUGSC by the <span className="gradient-text">Numbers</span>
         </h2>
-        <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "14px", marginBottom: "40px" }}>
+        <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "14px", marginBottom: "32px" }}>
           Uniting athletes, passionate supporters, and sports leaders across Primeasia
         </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "16px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "14px" }}>
           {[
             { num: "10+", label: "Sports Disciplines", icon: "🎽" },
             { num: "200 ৳", label: "Membership Fee", icon: "📱" },
@@ -333,19 +335,19 @@ export default async function LandingPage() {
             { num: "500+", label: "Student Athletes", icon: "⚽" },
           ].map((s) => (
             <div key={s.label} className="stat-card">
-              <div style={{ fontSize: "28px", marginBottom: "8px" }}>{s.icon}</div>
+              <div style={{ fontSize: "28px", marginBottom: "6px" }}>{s.icon}</div>
               <div
                 style={{
                   fontSize: "clamp(1.8rem, 4vw, 2.4rem)",
                   fontWeight: 900,
-                  color: "var(--gold)",
+                  color: "var(--gold-light)",
                   lineHeight: 1,
                   marginBottom: "6px",
                 }}
               >
                 {s.num}
               </div>
-              <div style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <div style={{ fontSize: "11.5px", color: "var(--text-secondary)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                 {s.label}
               </div>
             </div>
@@ -354,8 +356,8 @@ export default async function LandingPage() {
       </section>
 
       {/* Sports We Champion */}
-      <section style={{ padding: "60px 16px 20px", maxWidth: "960px", margin: "0 auto", width: "100%", position: "relative", zIndex: 5 }}>
-        <div style={{ textAlign: "center", marginBottom: "40px" }}>
+      <section style={{ padding: "50px 16px 20px", maxWidth: "960px", margin: "0 auto", width: "100%", position: "relative", zIndex: 5 }}>
+        <div style={{ textAlign: "center", marginBottom: "32px" }}>
           <h2 style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.2rem)", fontWeight: 900, color: "var(--text-primary)", marginBottom: "8px" }}>
             Sports We <span className="gradient-text">Champion</span>
           </h2>
@@ -363,14 +365,14 @@ export default async function LandingPage() {
             From outdoor grounds to indoor arenas — compete in your favorite discipline
           </p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "14px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: "12px" }}>
           {SPORTS.map((sport) => (
             <div key={sport.name} className="sport-card">
-              <div style={{ fontSize: "38px", marginBottom: "8px", display: "block" }}>{sport.icon}</div>
-              <div style={{ fontWeight: 700, fontSize: "14px", color: "var(--text-primary)", marginBottom: "2px" }}>
+              <div style={{ fontSize: "36px", marginBottom: "6px", display: "block" }}>{sport.icon}</div>
+              <div style={{ fontWeight: 800, fontSize: "14px", color: "var(--text-primary)", marginBottom: "2px" }}>
                 {sport.name}
               </div>
-              <div style={{ fontSize: "10px", color: "var(--gold)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <div style={{ fontSize: "10px", color: "var(--gold-light)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                 {sport.tag}
               </div>
             </div>
@@ -379,7 +381,7 @@ export default async function LandingPage() {
       </section>
 
       {/* How to Register Steps */}
-      <section style={{ padding: "60px 16px 20px", maxWidth: "860px", margin: "0 auto", width: "100%", position: "relative", zIndex: 5 }}>
+      <section style={{ padding: "50px 16px 20px", maxWidth: "860px", margin: "0 auto", width: "100%", position: "relative", zIndex: 5 }}>
         <h2
           style={{
             textAlign: "center",
@@ -391,10 +393,10 @@ export default async function LandingPage() {
         >
           How to <span className="gradient-text">Register</span>
         </h2>
-        <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "14px", marginBottom: "40px" }}>
+        <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "14px", marginBottom: "32px" }}>
           Four simple steps to claim your 2026 digital membership pass
         </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "14px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px" }}>
           {STEPS.map((step, i) => (
             <div key={step.label} className="step-flow-card">
               <div
@@ -404,35 +406,35 @@ export default async function LandingPage() {
                   right: "12px",
                   fontSize: "11px",
                   fontWeight: 800,
-                  color: "rgba(201,162,39,0.4)",
+                  color: "rgba(245,158,11,0.6)",
                 }}
               >
                 0{i + 1}
               </div>
-              <div style={{ fontSize: "36px", marginBottom: "10px" }}>{step.icon}</div>
-              <div style={{ fontWeight: 700, fontSize: "14px", color: "var(--text-primary)", marginBottom: "4px" }}>
+              <div style={{ fontSize: "32px", marginBottom: "8px" }}>{step.icon}</div>
+              <div style={{ fontWeight: 800, fontSize: "14px", color: "var(--text-primary)", marginBottom: "4px" }}>
                 {step.label}
               </div>
-              <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{step.desc}</div>
+              <div style={{ fontSize: "11.5px", color: "var(--text-secondary)" }}>{step.desc}</div>
             </div>
           ))}
         </div>
       </section>
 
       {/* Member Benefits Grid */}
-      <section style={{ padding: "60px 16px 80px", maxWidth: "960px", margin: "0 auto", width: "100%", position: "relative", zIndex: 5 }}>
+      <section style={{ padding: "50px 16px 70px", maxWidth: "960px", margin: "0 auto", width: "100%", position: "relative", zIndex: 5 }}>
         <h2
           style={{
             textAlign: "center",
             fontSize: "clamp(1.5rem, 3.5vw, 2.2rem)",
             fontWeight: 900,
-            marginBottom: "40px",
+            marginBottom: "32px",
             color: "var(--text-primary)",
           }}
         >
           Exclusive <span className="gradient-text">Member Benefits</span>
         </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "20px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
           {[
             {
               icon: "🎟️",
@@ -455,12 +457,12 @@ export default async function LandingPage() {
               desc: "Access sports training sessions, coaching workshops, and official participation certificates.",
             },
           ].map((f) => (
-            <div key={f.title} className="glass-card glow-border" style={{ padding: "24px" }}>
-              <div style={{ fontSize: "34px", marginBottom: "12px" }}>{f.icon}</div>
-              <h3 style={{ fontWeight: 700, fontSize: "16px", marginBottom: "8px", color: "var(--text-primary)" }}>
+            <div key={f.title} className="glass-card glow-border" style={{ padding: "20px" }}>
+              <div style={{ fontSize: "32px", marginBottom: "10px" }}>{f.icon}</div>
+              <h3 style={{ fontWeight: 800, fontSize: "15.5px", marginBottom: "6px", color: "var(--text-primary)" }}>
                 {f.title}
               </h3>
-              <p style={{ fontSize: "13.5px", color: "var(--text-secondary)", lineHeight: 1.6 }}>{f.desc}</p>
+              <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.6 }}>{f.desc}</p>
             </div>
           ))}
         </div>
@@ -470,31 +472,28 @@ export default async function LandingPage() {
       {!isRegistrationClosed && (
         <section
           style={{
-            padding: "40px 16px 80px",
+            padding: "20px 16px 70px",
             position: "relative",
             zIndex: 5,
             textAlign: "center",
           }}
         >
           <div
+            className="glass-card-bright glow-border"
             style={{
               maxWidth: "640px",
               margin: "0 auto",
-              background: "rgba(10,22,40,0.75)",
-              border: "1px solid rgba(201,162,39,0.3)",
               borderRadius: "24px",
-              padding: "48px 32px",
-              backdropFilter: "blur(20px)",
-              boxShadow: "0 0 60px rgba(201,162,39,0.1)",
+              padding: "40px 24px",
             }}
           >
-            <div style={{ fontSize: "48px", marginBottom: "16px" }} className="animate-float-bob">
+            <div style={{ fontSize: "44px", marginBottom: "12px" }} className="animate-float-bob">
               🏆
             </div>
-            <h2 style={{ fontSize: "1.9rem", fontWeight: 900, marginBottom: "12px", color: "var(--text-primary)" }}>
+            <h2 style={{ fontSize: "1.8rem", fontWeight: 900, marginBottom: "10px", color: "var(--text-primary)" }}>
               Ready to Join the <span className="gradient-text">Squad?</span>
             </h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: "14px", marginBottom: "28px", lineHeight: 1.7 }}>
+            <p style={{ color: "var(--text-secondary)", fontSize: "13.5px", marginBottom: "24px", lineHeight: 1.7 }}>
               Pay 200 BDT via bKash Education Fee (Primeasia University ➔ Others) and enter your Transaction ID to get your official PaUGSC member pass today!
             </p>
             <form
@@ -502,8 +501,9 @@ export default async function LandingPage() {
                 "use server";
                 await signIn("google", { redirectTo: "/dashboard" });
               }}
+              style={{ maxWidth: "360px", margin: "0 auto" }}
             >
-              <button type="submit" className="btn-neon-gold" style={{ fontSize: "15px", padding: "14px 36px" }}>
+              <button type="submit" className="btn-neon-gold" style={{ fontSize: "15px", padding: "14px 28px", width: "100%" }}>
                 Register as Member Now
               </button>
             </form>

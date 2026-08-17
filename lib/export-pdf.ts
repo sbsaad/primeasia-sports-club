@@ -22,7 +22,6 @@ export type MemberSlipData = {
   registeredAt: Date | string;
 };
 
-
 export function downloadMemberSlipPdf(data: MemberSlipData) {
   const doc = new jsPDF({
     orientation: "portrait",
@@ -32,126 +31,228 @@ export function downloadMemberSlipPdf(data: MemberSlipData) {
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 12;
+  const contentWidth = pageWidth - margin * 2;
 
-  // Colors
-  const navy = [10, 22, 40]; // #0a1628
-  const gold = [201, 162, 39]; // #c9a227
-  const goldLight = [232, 200, 78];
-  const darkGray = [30, 41, 59];
-  const lightBg = [248, 250, 252];
-  const borderGray = [226, 232, 240];
+  // Premium Certificate Palette
+  const cNavy = [11, 23, 48];        // #0b1730
+  const cNavyCard = [19, 39, 78];    // #13274e
+  const cGold = [217, 119, 6];       // #d97706
+  const cGoldLight = [245, 158, 11]; // #f59e0b
+  const cGoldPale = [254, 243, 199]; // #fef3c7
+  const cTextDark = [15, 23, 42];    // #0f172a
+  const cTextMuted = [100, 116, 139];// #64748b
+  const cBoxBg = [248, 250, 252];    // #f8fafc
+  const cBoxBorder = [226, 232, 240];// #e2e8f0
 
-  // Outer decorative border
-  doc.setDrawColor(gold[0], gold[1], gold[2]);
-  doc.setLineWidth(1.2);
-  doc.rect(8, 8, pageWidth - 16, pageHeight - 16);
+  // ================= 1. BORDERS & WATERMARK =================
+  // Outer double gold border
+  doc.setDrawColor(cGoldLight[0], cGoldLight[1], cGoldLight[2]);
+  doc.setLineWidth(1.0);
+  doc.rect(margin - 4, margin - 4, contentWidth + 8, pageHeight - (margin - 4) * 2);
 
-  doc.setDrawColor(navy[0], navy[1], navy[2]);
-  doc.setLineWidth(0.4);
-  doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
+  doc.setDrawColor(cNavy[0], cNavy[1], cNavy[2]);
+  doc.setLineWidth(0.35);
+  doc.rect(margin - 2, margin - 2, contentWidth + 4, pageHeight - (margin - 2) * 2);
 
-  // Top Header Banner
-  doc.setFillColor(navy[0], navy[1], navy[2]);
-  doc.rect(10, 10, pageWidth - 20, 36, "F");
+  // Subtle Watermark Circle in Center
+  doc.setDrawColor(245, 235, 215);
+  doc.setLineWidth(0.8);
+  doc.circle(pageWidth / 2, 140, 52);
+  doc.circle(pageWidth / 2, 140, 48);
 
-  // Gold accent bar below banner
-  doc.setFillColor(gold[0], gold[1], gold[2]);
-  doc.rect(10, 46, pageWidth - 20, 2.5, "F");
+  // ================= 2. TOP HEADER BANNER =================
+  doc.setFillColor(cNavy[0], cNavy[1], cNavy[2]);
+  doc.roundedRect(margin, margin, contentWidth, 32, 2, 2, "F");
 
-  // Title Text
+  // Gold accent strip below banner
+  doc.setFillColor(cGoldLight[0], cGoldLight[1], cGoldLight[2]);
+  doc.rect(margin, margin + 31.5, contentWidth, 1.5, "F");
+
+  // University Header Text
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(17);
-  doc.text("PRIMEASIA UNIVERSITY", pageWidth / 2, 21, { align: "center" });
+  doc.setFontSize(15);
+  doc.text("PRIMEASIA UNIVERSITY", pageWidth / 2, margin + 9, { align: "center" });
 
-  doc.setFontSize(13);
-  doc.setTextColor(goldLight[0], goldLight[1], goldLight[2]);
-  doc.text("GAMES & SPORTS CLUB (PaUGSC)", pageWidth / 2, 29, { align: "center" });
+  doc.setFontSize(11.5);
+  doc.setTextColor(251, 191, 36);
+  doc.text("GAMES & SPORTS CLUB (PaUGSC)", pageWidth / 2, margin + 17, { align: "center" });
 
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(200, 215, 240);
-  doc.text("OFFICIAL GENERAL MEMBER REGISTRATION SLIP · 2026", pageWidth / 2, 37, { align: "center" });
+  doc.setTextColor(215, 230, 255);
+  doc.text("OFFICIAL GENERAL MEMBER REGISTRATION SLIP · SEASON 2026", pageWidth / 2, margin + 24, { align: "center" });
 
-  // Membership ID Badge Box
-  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-  doc.setDrawColor(gold[0], gold[1], gold[2]);
-  doc.setLineWidth(0.6);
-  doc.roundedRect(15, 53, pageWidth - 30, 16, 2, 2, "FD");
+  doc.setFontSize(7);
+  doc.setTextColor(180, 200, 230);
+  doc.text("Star Tower, 12 Kemal Ataturk Avenue, Banani, Dhaka-1213", pageWidth / 2, margin + 29, { align: "center" });
+
+  // ================= 3. MEMBERSHIP ID & STATUS BAR =================
+  let curY = margin + 37;
+
+  const isVerified = data.paymentStatus === "verified";
+  const isRejected = data.paymentStatus === "rejected";
+
+  doc.setFillColor(cBoxBg[0], cBoxBg[1], cBoxBg[2]);
+  doc.setDrawColor(cGoldLight[0], cGoldLight[1], cGoldLight[2]);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(margin, curY, contentWidth, 12, 1.5, 1.5, "FD");
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(navy[0], navy[1], navy[2]);
-  doc.text(`MEMBERSHIP ID: ${data.membershipNumber}`, 20, 63);
+  doc.setFontSize(10);
+  doc.setTextColor(cNavy[0], cNavy[1], cNavy[2]);
+  doc.text("MEMBERSHIP ID:", margin + 5, curY + 7.5);
 
-  const statusText = data.paymentStatus === "verified" ? "STATUS: VERIFIED MEMBER" : "STATUS: PAYMENT PENDING VERIFICATION";
-  doc.setFontSize(9.5);
-  if (data.paymentStatus === "verified") {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.setTextColor(cGold[0], cGold[1], cGold[2]);
+  doc.text(data.membershipNumber || "PAUSC-2026-0001", margin + 42, curY + 7.5);
+
+  const statusLabel = isVerified
+    ? "[ VERIFIED OFFICIAL MEMBER ]"
+    : isRejected
+    ? "[ PAYMENT REJECTED ]"
+    : "[ PAYMENT PENDING VERIFICATION ]";
+
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "bold");
+  if (isVerified) {
     doc.setTextColor(22, 163, 74); // green
+  } else if (isRejected) {
+    doc.setTextColor(220, 38, 38); // red
   } else {
-    doc.setTextColor(217, 119, 6); // amber
+    doc.setTextColor(217, 119, 6);  // amber
   }
-  doc.text(statusText, pageWidth - 20, 63, { align: "right" });
+  doc.text(statusLabel, margin + contentWidth - 5, curY + 7.5, { align: "right" });
 
-  // Section 1: Member University Details
-  let currentY = 77;
-  doc.setFillColor(navy[0], navy[1], navy[2]);
-  doc.rect(15, currentY, pageWidth - 30, 7, "F");
+  // ================= 4. SECTION 1: STUDENT & ACADEMIC PROFILE =================
+  curY += 16;
+
+  doc.setFillColor(cNavy[0], cNavy[1], cNavy[2]);
+  doc.roundedRect(margin, curY, contentWidth, 6, 1, 1, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("1. STUDENT & UNIVERSITY PROFILE", 19, currentY + 5);
+  doc.setFontSize(8.5);
+  doc.text("1. STUDENT & ACADEMIC PROFILE", margin + 4, curY + 4.2);
 
-  currentY += 10;
-  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+  curY += 8;
+  const sec1Height = 52;
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(cBoxBorder[0], cBoxBorder[1], cBoxBorder[2]);
   doc.setLineWidth(0.3);
-  doc.setFillColor(255, 255, 255);
-  doc.rect(15, currentY, pageWidth - 30, 48, "FD");
+  doc.roundedRect(margin, curY, contentWidth, sec1Height, 1.5, 1.5, "FD");
 
-  const leftColX = 20;
-  const rightColX = pageWidth / 2 + 5;
-  let rowY = currentY + 8;
+  let rY = curY + 6.5;
 
-  const renderField = (label: string, value: string, x: number, y: number) => {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`${label}:`, x, y);
+  // Row 1: Full Name
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Full Name:", margin + 5, rY);
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(navy[0], navy[1], navy[2]);
-    doc.text(value || "N/A", x + 38, y);
-  };
-
-  renderField("Full Name", data.fullName, leftColX, rowY);
-  renderField("Student ID", data.studentId, rightColX, rowY);
-  rowY += 9;
-
-  renderField("Email", data.email, leftColX, rowY);
-  renderField("Phone / WhatsApp", data.phone, rightColX, rowY);
-  rowY += 9;
-
-  renderField("Department", data.department, leftColX, rowY);
-  renderField("Semester", `Semester ${data.semester}`, rightColX, rowY);
-  rowY += 9;
-
-  renderField("Gender", data.gender, leftColX, rowY);
-  renderField("Blood Group", data.bloodGroup, rightColX, rowY);
-
-  // Section 2: Sports & Apparel Preferences
-  currentY += 56;
-  doc.setFillColor(navy[0], navy[1], navy[2]);
-  doc.rect(15, currentY, pageWidth - 30, 7, "F");
-  doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("2. SPORTS PREFERENCES & CLUB APPAREL", 19, currentY + 5);
+  doc.setTextColor(cTextDark[0], cTextDark[1], cTextDark[2]);
+  doc.text(data.fullName || "Student Name", margin + 28, rY);
 
-  currentY += 10;
-  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+  rY += 8;
+
+  // Row 2: Student ID & Email
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Student ID:", margin + 5, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(cNavy[0], cNavy[1], cNavy[2]);
+  doc.text(data.studentId || "N/A", margin + 28, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Email Address:", margin + 95, rY);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(cTextDark[0], cTextDark[1], cTextDark[2]);
+  doc.text(data.email || "N/A", margin + 120, rY);
+
+  rY += 8;
+
+  // Row 3: Phone / WhatsApp & Gender
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Phone / WA:", margin + 5, rY);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(cTextDark[0], cTextDark[1], cTextDark[2]);
+  doc.text(data.phone || "N/A", margin + 28, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Gender:", margin + 95, rY);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(cTextDark[0], cTextDark[1], cTextDark[2]);
+  doc.text(data.gender || "Male", margin + 120, rY);
+
+  rY += 8;
+
+  // Row 4: Department (Full Width)
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Department:", margin + 5, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(cNavy[0], cNavy[1], cNavy[2]);
+  doc.text(data.department || "N/A", margin + 28, rY);
+
+  rY += 8;
+
+  // Row 5: Semester & Blood Group
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Semester:", margin + 5, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(cGold[0], cGold[1], cGold[2]);
+  doc.text(`Semester ${data.semester}`, margin + 28, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Blood Group:", margin + 95, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(220, 38, 38);
+  doc.text(data.bloodGroup || "Unknown", margin + 120, rY);
+
+  // ================= 5. SECTION 2: SPORTS & APPAREL =================
+  curY += sec1Height + 5;
+
+  doc.setFillColor(cNavy[0], cNavy[1], cNavy[2]);
+  doc.roundedRect(margin, curY, contentWidth, 6, 1, 1, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.text("2. SPORTS PREFERENCES & APPAREL", margin + 4, curY + 4.2);
+
+  curY += 8;
+  const sec2Height = 32;
   doc.setFillColor(255, 255, 255);
-  doc.rect(15, currentY, pageWidth - 30, 32, "FD");
+  doc.setDrawColor(cBoxBorder[0], cBoxBorder[1], cBoxBorder[2]);
+  doc.roundedRect(margin, curY, contentWidth, sec2Height, 1.5, 1.5, "FD");
 
   let parsedSports = "";
   try {
@@ -161,68 +262,136 @@ export function downloadMemberSlipPdf(data: MemberSlipData) {
     parsedSports = data.sportsInterests;
   }
 
-  rowY = currentY + 8;
-  renderField("Sports Interests", parsedSports, leftColX, rowY);
-  rowY += 10;
-  renderField("Jersey Size", `${data.jerseySize} (For future use / events)`, leftColX, rowY);
-  rowY += 8;
+  rY = curY + 6.5;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Sports Selected:", margin + 5, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(cNavy[0], cNavy[1], cNavy[2]);
+  doc.text(parsedSports || "General Athletics", margin + 32, rY);
+
+  rY += 8;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Jersey Size:", margin + 5, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(cTextDark[0], cTextDark[1], cTextDark[2]);
+  doc.text(`${data.jerseySize || "M"} (Recorded for future tournaments & club events)`, margin + 32, rY);
+
+  rY += 7.5;
 
   doc.setFont("helvetica", "italic");
-  doc.setFontSize(8);
-  doc.setTextColor(120, 130, 140);
-  doc.text("* Note: Jersey size recorded for future sports tournaments. No jersey is being distributed currently.", leftColX, rowY);
+  doc.setFontSize(7);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("* Note: Jersey size recorded for future use/events. No jersey is being distributed currently.", margin + 5, rY);
 
-  // Section 3: bKash Payment Details
-  currentY += 40;
-  doc.setFillColor(navy[0], navy[1], navy[2]);
-  doc.rect(15, currentY, pageWidth - 30, 7, "F");
+  // ================= 6. SECTION 3: BKASH PAYMENT & VERIFICATION =================
+  curY += sec2Height + 5;
+
+  doc.setFillColor(cNavy[0], cNavy[1], cNavy[2]);
+  doc.roundedRect(margin, curY, contentWidth, 6, 1, 1, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("3. bKASH PAYMENT & VERIFICATION", 19, currentY + 5);
+  doc.setFontSize(8.5);
+  doc.text("3. bKASH PAYMENT & VERIFICATION", margin + 4, curY + 4.2);
 
-  currentY += 10;
-  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
-  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-  doc.rect(15, currentY, pageWidth - 30, 32, "FD");
+  curY += 8;
+  const sec3Height = 36;
+  doc.setFillColor(cBoxBg[0], cBoxBg[1], cBoxBg[2]);
+  doc.setDrawColor(cBoxBorder[0], cBoxBorder[1], cBoxBorder[2]);
+  doc.roundedRect(margin, curY, contentWidth, sec3Height, 1.5, 1.5, "FD");
 
-  rowY = currentY + 8;
-  renderField("Method", "bKash App (Education Fee -> Primeasia)", leftColX, rowY);
-  renderField("Amount Paid", `${data.paymentAmount || "200"} BDT`, rightColX, rowY);
-  rowY += 9;
+  rY = curY + 6.5;
 
-  renderField("Transaction ID", data.transactionId, leftColX, rowY);
-  renderField("Sender Number", data.bkashNumber || "Recorded via TrxID", rightColX, rowY);
-  rowY += 9;
-
-  const regDate = new Date(data.registeredAt).toLocaleString("en-GB", { timeZone: "Asia/Dhaka" });
-  renderField("Registered At", regDate, leftColX, rowY);
-
-  // Verification Seal / Signatures Section
-  currentY += 44;
-  doc.setDrawColor(gold[0], gold[1], gold[2]);
-  doc.setLineWidth(0.5);
-  doc.line(20, currentY + 22, 75, currentY + 22);
-  doc.line(pageWidth - 75, currentY + 22, pageWidth - 20, currentY + 22);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Payment Method:", margin + 5, rY);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
-  doc.setTextColor(navy[0], navy[1], navy[2]);
-  doc.text("Student Signature", 32, currentY + 27);
-  doc.text("Authorized Club Official", pageWidth - 65, currentY + 27);
+  doc.setTextColor(cTextDark[0], cTextDark[1], cTextDark[2]);
+  doc.text("bKash App (Education Fee -> Primeasia University -> Others)", margin + 32, rY);
+
+  rY += 8;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("bKash TrxID:", margin + 5, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(226, 19, 110); // bKash Pink
+  doc.text(data.transactionId || "N/A", margin + 32, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Amount Paid:", margin + 95, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(22, 163, 74); // green
+  doc.text(`${data.paymentAmount || "200"} BDT`, margin + 120, rY);
+
+  rY += 8;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Sender Phone:", margin + 5, rY);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(cTextDark[0], cTextDark[1], cTextDark[2]);
+  doc.text(data.bkashNumber || "Verified via TrxID", margin + 32, rY);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
+  doc.text("Submission Date:", margin + 95, rY);
+
+  const regDate = new Date(data.registeredAt).toLocaleString("en-GB", { timeZone: "Asia/Dhaka" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(cTextDark[0], cTextDark[1], cTextDark[2]);
+  doc.text(regDate, margin + 120, rY);
+
+  // ================= 7. SIGNATURES =================
+  curY += sec3Height + 14;
+
+  doc.setDrawColor(cGold[0], cGold[1], cGold[2]);
+  doc.setLineWidth(0.4);
+  doc.line(margin + 10, curY + 8, margin + 65, curY + 8);
+  doc.line(margin + contentWidth - 65, curY + 8, margin + contentWidth - 10, curY + 8);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(cNavy[0], cNavy[1], cNavy[2]);
+  doc.text("Student Signature", margin + 22, curY + 13);
+  doc.text("Authorized Club Official", margin + contentWidth - 55, curY + 13);
 
   // Bottom Notice
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(140, 150, 165);
+  doc.setFontSize(7);
+  doc.setTextColor(cTextMuted[0], cTextMuted[1], cTextMuted[2]);
   doc.text(
-    "Primeasia University Games & Sports Club · Star Tower, 12 Kemal Ataturk Avenue, Banani, Dhaka-1213",
+    "Please retain this slip. Bring a printed or digital copy for club verification, jersey distribution, and tournament clearances.",
     pageWidth / 2,
-    pageHeight - 14,
+    pageHeight - margin - 2,
     { align: "center" }
   );
 
-  const safeName = data.fullName.replace(/[^a-zA-Z0-9]/g, "_");
+  const safeName = (data.fullName || "Student").replace(/[^a-zA-Z0-9]/g, "_");
   doc.save(`PaUGSC_Membership_Slip_${safeName}_${data.studentId}.pdf`);
 }
 
@@ -234,28 +403,35 @@ export function downloadAdminRosterPdf(members: AdminMemberRow[]) {
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 10;
+  const contentWidth = pageWidth - margin * 2;
 
-  // Header
-  doc.setFillColor(10, 22, 40);
-  doc.rect(10, 8, pageWidth - 20, 22, "F");
+  // Header Banner
+  doc.setFillColor(11, 23, 48);
+  doc.roundedRect(margin, margin, contentWidth, 22, 2, 2, "F");
 
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("PRIMEASIA UNIVERSITY GAMES & SPORTS CLUB", pageWidth / 2, 17, { align: "center" });
+  doc.text("PRIMEASIA UNIVERSITY GAMES & SPORTS CLUB (PaUGSC)", pageWidth / 2, margin + 8, { align: "center" });
 
-  doc.setFontSize(10);
-  doc.setTextColor(201, 162, 39);
-  doc.text(`GENERAL MEMBERS ROSTER · Total: ${members.length} Members · Generated: ${new Date().toLocaleDateString("en-GB")}`, pageWidth / 2, 25, { align: "center" });
+  doc.setFontSize(9.5);
+  doc.setTextColor(245, 158, 11);
+  doc.text(
+    `OFFICIAL GENERAL MEMBERS ROSTER · Total: ${members.length} Members · Generated: ${new Date().toLocaleString("en-GB", { timeZone: "Asia/Dhaka" })}`,
+    pageWidth / 2,
+    margin + 16,
+    { align: "center" }
+  );
 
-  // Simple Table Rows
-  let y = 38;
-  const colX = [12, 22, 56, 88, 120, 154, 182, 212, 246, 274];
+  const colX = [margin + 2, margin + 12, margin + 48, margin + 82, margin + 118, margin + 160, margin + 188, margin + 204, margin + 240];
+  let y = margin + 30;
 
-  doc.setFillColor(235, 240, 250);
-  doc.rect(10, y - 5, pageWidth - 20, 7, "F");
+  doc.setFillColor(241, 245, 249);
+  doc.roundedRect(margin, y - 5, contentWidth, 7, 1, 1, "F");
 
-  doc.setTextColor(10, 22, 40);
+  doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.text("#", colX[0], y);
@@ -265,7 +441,7 @@ export function downloadAdminRosterPdf(members: AdminMemberRow[]) {
   doc.text("Department", colX[4], y);
   doc.text("Phone", colX[5], y);
   doc.text("Blood", colX[6], y);
-  doc.text("TrxID", colX[7], y);
+  doc.text("bKash TrxID", colX[7], y);
   doc.text("Status", colX[8], y);
 
   y += 7;
@@ -273,21 +449,38 @@ export function downloadAdminRosterPdf(members: AdminMemberRow[]) {
   doc.setFontSize(7.5);
 
   members.forEach((m, i) => {
-    if (y > 190) {
+    if (y > pageHeight - 15) {
       doc.addPage();
-      y = 20;
+      y = margin + 15;
+    }
+
+    if (i % 2 === 1) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, y - 4, contentWidth, 6, "F");
     }
 
     doc.setTextColor(30, 41, 59);
     doc.text(String(i + 1), colX[0], y);
     doc.text(m.membershipNumber, colX[1], y);
-    doc.text(m.fullName.substring(0, 20), colX[2], y);
+    doc.text((m.fullName || "").substring(0, 18), colX[2], y);
     doc.text(m.studentId, colX[3], y);
-    doc.text(m.department.substring(0, 18), colX[4], y);
+    doc.text((m.department || "").substring(0, 22), colX[4], y);
     doc.text(m.phone, colX[5], y);
-    doc.text(m.bloodGroup, colX[6], y);
+    doc.text(m.bloodGroup || "N/A", colX[6], y);
     doc.text(m.transactionId, colX[7], y);
+
+    if (m.paymentStatus === "verified") {
+      doc.setTextColor(22, 163, 74);
+      doc.setFont("helvetica", "bold");
+    } else if (m.paymentStatus === "rejected") {
+      doc.setTextColor(220, 38, 38);
+      doc.setFont("helvetica", "bold");
+    } else {
+      doc.setTextColor(217, 119, 6);
+      doc.setFont("helvetica", "normal");
+    }
     doc.text(m.paymentStatus.toUpperCase(), colX[8], y);
+    doc.setFont("helvetica", "normal");
 
     y += 6;
   });

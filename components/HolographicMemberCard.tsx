@@ -40,24 +40,34 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
   const [isFlipped, setIsFlipped] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isInteractive || !cardRef.current) return;
+  const calculateTilt = (clientX: number, clientY: number) => {
+    if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
 
-    const rX = ((y - centerY) / centerY) * -12; // tilt max 12 deg
-    const rY = ((x - centerX) / centerX) * 14;
+    const rX = ((y - centerY) / centerY) * -14; // max 14 deg tilt
+    const rY = ((x - centerX) / centerX) * 16;
 
     setRotateX(rX);
     setRotateY(rY);
     setGlarePosition({
       x: (x / rect.width) * 100,
       y: (y / rect.height) * 100,
-      opacity: 0.6,
+      opacity: 0.75,
     });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isInteractive) return;
+    calculateTilt(e.clientX, e.clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isInteractive || e.touches.length === 0) return;
+    calculateTilt(e.touches[0].clientX, e.touches[0].clientY);
   };
 
   const handleMouseLeave = () => {
@@ -113,28 +123,31 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
   const isRejected = member.paymentStatus === "rejected";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px", width: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", width: "100%" }}>
       {/* 3D Card Container with Perspective */}
       <div
         style={{
           perspective: "1200px",
           width: "100%",
-          maxWidth: "460px",
+          maxWidth: "480px",
           height: "300px",
           cursor: isInteractive ? "pointer" : "default",
+          touchAction: "pan-y",
         }}
       >
         <div
           ref={cardRef}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleMouseLeave}
           style={{
             width: "100%",
             height: "100%",
             position: "relative",
             transformStyle: "preserve-3d",
             transform: `rotateX(${rotateX}deg) rotateY(${rotateY + (isFlipped ? 180 : 0)}deg)`,
-            transition: isFlipped ? "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)" : "transform 0.1s ease-out",
+            transition: isFlipped ? "transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)" : "transform 0.08s ease-out",
             borderRadius: "20px",
           }}
         >
@@ -148,16 +161,16 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
               backfaceVisibility: "hidden",
               WebkitBackfaceVisibility: "hidden",
               borderRadius: "20px",
-              background: "linear-gradient(135deg, rgba(15, 28, 50, 0.95) 0%, rgba(10, 18, 35, 0.98) 100%)",
+              background: "linear-gradient(135deg, rgba(17, 36, 72, 0.96) 0%, rgba(11, 23, 48, 0.98) 100%)",
               border: isVerified
-                ? "2px solid rgba(34, 197, 94, 0.6)"
+                ? "2px solid rgba(34, 197, 94, 0.8)"
                 : isRejected
-                ? "2px solid rgba(239, 68, 68, 0.6)"
-                : "2px solid rgba(201, 162, 39, 0.5)",
+                ? "2px solid rgba(239, 68, 68, 0.8)"
+                : "2px solid rgba(245, 158, 11, 0.7)",
               boxShadow: isVerified
-                ? "0 20px 40px -10px rgba(34, 197, 94, 0.25), 0 0 25px rgba(34, 197, 94, 0.2)"
-                : "0 20px 40px -10px rgba(201, 162, 39, 0.25), 0 0 25px rgba(201, 162, 39, 0.15)",
-              padding: "20px 24px",
+                ? "0 20px 45px -10px rgba(34, 197, 94, 0.35), 0 0 30px rgba(34, 197, 94, 0.25)"
+                : "0 20px 45px -10px rgba(245, 158, 11, 0.35), 0 0 30px rgba(245, 158, 11, 0.2)",
+              padding: "18px 22px",
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
@@ -169,7 +182,7 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
               style={{
                 position: "absolute",
                 inset: 0,
-                background: `radial-gradient(circle at ${glarePosition.x}% ${glarePosition.y}%, rgba(255, 255, 255, 0.25) 0%, rgba(201, 162, 39, 0.15) 30%, transparent 70%)`,
+                background: `radial-gradient(circle at ${glarePosition.x}% ${glarePosition.y}%, rgba(255, 255, 255, 0.35) 0%, rgba(245, 158, 11, 0.25) 35%, rgba(56, 189, 248, 0.15) 55%, transparent 75%)`,
                 opacity: glarePosition.opacity,
                 pointerEvents: "none",
                 borderRadius: "20px",
@@ -183,10 +196,10 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
                 position: "absolute",
                 right: "-20px",
                 top: "-20px",
-                width: "160px",
-                height: "160px",
+                width: "180px",
+                height: "180px",
                 borderRadius: "50%",
-                background: "radial-gradient(circle, rgba(201,162,39,0.12) 0%, transparent 70%)",
+                background: "radial-gradient(circle, rgba(245,158,11,0.2) 0%, transparent 70%)",
                 pointerEvents: "none",
               }}
             />
@@ -196,26 +209,25 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div
                   style={{
-                    width: 36,
-                    height: 36,
+                    width: 38,
+                    height: 38,
                     borderRadius: "10px",
-                    background: "linear-gradient(135deg, var(--gold), var(--gold-light))",
+                    background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "18px",
-                    fontWeight: 900,
-                    color: "var(--navy)",
-                    boxShadow: "0 0 12px rgba(201,162,39,0.5)",
+                    fontSize: "20px",
+                    boxShadow: "0 0 16px rgba(245,158,11,0.6)",
+                    flexShrink: 0,
                   }}
                 >
                   ⚽
                 </div>
                 <div>
-                  <div style={{ fontSize: "11px", fontWeight: 800, color: "var(--gold)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 800, color: "var(--gold-light)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                     PaUGSC · Member Pass
                   </div>
-                  <div style={{ fontSize: "13px", fontWeight: 800, color: "#fff", lineHeight: 1.1 }}>
+                  <div style={{ fontSize: "13.5px", fontWeight: 800, color: "#fff", lineHeight: 1.1 }}>
                     Primeasia University
                   </div>
                 </div>
@@ -227,71 +239,75 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
                   display: "flex",
                   alignItems: "center",
                   gap: "5px",
-                  padding: "4px 10px",
+                  padding: "5px 12px",
                   borderRadius: "20px",
-                  fontSize: "10.5px",
-                  fontWeight: 700,
+                  fontSize: "11px",
+                  fontWeight: 800,
                   letterSpacing: "0.04em",
                   textTransform: "uppercase",
                   background: isVerified
-                    ? "rgba(34, 197, 94, 0.15)"
+                    ? "rgba(34, 197, 94, 0.25)"
                     : isRejected
-                    ? "rgba(239, 68, 68, 0.15)"
-                    : "rgba(245, 158, 11, 0.15)",
+                    ? "rgba(239, 68, 68, 0.25)"
+                    : "rgba(245, 158, 11, 0.25)",
                   color: isVerified ? "#4ade80" : isRejected ? "#f87171" : "#fbbf24",
                   border: isVerified
-                    ? "1px solid rgba(34, 197, 94, 0.4)"
+                    ? "1px solid rgba(34, 197, 94, 0.6)"
                     : isRejected
-                    ? "1px solid rgba(239, 68, 68, 0.4)"
-                    : "1px solid rgba(245, 158, 11, 0.4)",
+                    ? "1px solid rgba(239, 68, 68, 0.6)"
+                    : "1px solid rgba(245, 158, 11, 0.6)",
+                  boxShadow: isVerified
+                    ? "0 0 12px rgba(34, 197, 94, 0.3)"
+                    : "0 0 12px rgba(245, 158, 11, 0.3)",
                 }}
               >
                 {isVerified ? (
                   <>
-                    <ShieldCheck size={12} /> Verified
+                    <ShieldCheck size={13} /> Verified
                   </>
                 ) : isRejected ? (
                   <>
-                    <AlertCircle size={12} /> Rejected
+                    <AlertCircle size={13} /> Rejected
                   </>
                 ) : (
                   <>
-                    <Clock size={12} className="animate-spin-slow" /> Pending
+                    <Clock size={13} className="animate-spin-slow" /> Pending
                   </>
                 )}
               </div>
             </div>
 
             {/* Middle Section: Member Avatar & Details */}
-            <div style={{ display: "flex", alignItems: "center", gap: "16px", zIndex: 2, margin: "10px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", zIndex: 2, margin: "6px 0" }}>
               {member.userAvatar ? (
                 <Image
                   src={member.userAvatar}
                   alt={member.fullName}
-                  width={64}
-                  height={64}
+                  width={60}
+                  height={60}
                   style={{
-                    borderRadius: "14px",
+                    borderRadius: "12px",
                     border: "2px solid var(--gold)",
                     flexShrink: 0,
-                    boxShadow: "0 0 14px rgba(201,162,39,0.3)",
+                    boxShadow: "0 0 16px rgba(245,158,11,0.4)",
                   }}
                 />
               ) : (
                 <div
                   style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: "14px",
-                    background: "linear-gradient(135deg, #1e3a8a, #0f172a)",
+                    width: 60,
+                    height: 60,
+                    borderRadius: "12px",
+                    background: "linear-gradient(135deg, #1d4ed8, #0f172a)",
                     border: "2px solid var(--gold)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     fontSize: "24px",
                     fontWeight: 800,
-                    color: "var(--gold)",
+                    color: "var(--gold-light)",
                     flexShrink: 0,
+                    boxShadow: "0 0 16px rgba(245,158,11,0.3)",
                   }}
                 >
                   {member.fullName ? member.fullName[0].toUpperCase() : "P"}
@@ -302,83 +318,94 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
                 <h3
                   style={{
                     fontSize: "17px",
-                    fontWeight: 800,
-                    color: "#fff",
-                    margin: 0,
+                    fontWeight: 900,
+                    color: "#ffffff",
+                    marginBottom: "3px",
+                    whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
                   }}
                 >
                   {member.fullName || "Student Name"}
                 </h3>
-                <div style={{ fontSize: "12px", color: "var(--gold-light)", fontFamily: "monospace", fontWeight: 700, marginTop: "2px" }}>
+                <div style={{ fontSize: "12.5px", color: "var(--accent)", fontWeight: 700, marginBottom: "2px" }}>
                   ID: {member.studentId || "24200000"} · Sem {member.semester || 1}
                 </div>
                 <div
                   style={{
-                    fontSize: "11px",
+                    fontSize: "11.5px",
                     color: "var(--text-secondary)",
+                    whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    marginTop: "2px",
                   }}
                 >
-                  {member.department || "Department of CSE"}
+                  {member.department || "Primeasia University"}
                 </div>
               </div>
             </div>
 
-            {/* Bottom Row: Membership Number, Sports, Blood Group */}
+            {/* Sports Badge Pills Row */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", zIndex: 2 }}>
+              {sportsList.slice(0, 3).map((sport, i) => (
+                <span
+                  key={i}
+                  style={{
+                    fontSize: "10.5px",
+                    fontWeight: 700,
+                    padding: "3px 8px",
+                    borderRadius: "8px",
+                    background: "rgba(245, 158, 11, 0.2)",
+                    color: "var(--gold-pale)",
+                    border: "1px solid rgba(245, 158, 11, 0.4)",
+                  }}
+                >
+                  {sport}
+                </span>
+              ))}
+              {sportsList.length > 3 && (
+                <span
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    padding: "3px 6px",
+                    borderRadius: "8px",
+                    background: "rgba(56, 189, 248, 0.2)",
+                    color: "#38bdf8",
+                  }}
+                >
+                  +{sportsList.length - 3} more
+                </span>
+              )}
+            </div>
+
+            {/* Bottom Bar: Membership Code & bKash TrxID */}
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "flex-end",
                 zIndex: 2,
-                borderTop: "1px solid rgba(255,255,255,0.08)",
-                paddingTop: "10px",
+                borderTop: "1px solid rgba(245, 158, 11, 0.25)",
+                paddingTop: "8px",
               }}
             >
               <div>
-                <div style={{ fontSize: "9px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Member Pass ID
+                <div style={{ fontSize: "9.5px", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
+                  Membership ID
                 </div>
-                <div style={{ fontSize: "13px", fontWeight: 800, color: "var(--gold)", fontFamily: "monospace" }}>
-                  {member.membershipNumber || "PAUSC-2026-XXXX"}
+                <div style={{ fontSize: "12px", fontWeight: 800, color: "var(--gold)", letterSpacing: "0.04em" }}>
+                  {member.membershipNumber || "PAUSC-2026-0001"}
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                {member.bloodGroup && member.bloodGroup !== "Unknown" && (
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      fontWeight: 800,
-                      background: "rgba(239, 68, 68, 0.2)",
-                      color: "#fca5a5",
-                      border: "1px solid rgba(239, 68, 68, 0.4)",
-                      padding: "2px 6px",
-                      borderRadius: "6px",
-                    }}
-                  >
-                    🩸 {member.bloodGroup}
-                  </span>
-                )}
-                <span
-                  style={{
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    background: "rgba(79, 142, 247, 0.15)",
-                    color: "#93c5fd",
-                    border: "1px solid rgba(79, 142, 247, 0.3)",
-                    padding: "2px 6px",
-                    borderRadius: "6px",
-                  }}
-                >
-                  Jersey: {member.jerseySize || "M"}
-                </span>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: "9.5px", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
+                  bKash TrxID
+                </div>
+                <div style={{ fontSize: "12px", fontWeight: 800, color: "#f43f5e", letterSpacing: "0.04em" }}>
+                  {member.transactionId || "PENDING"}
+                </div>
               </div>
             </div>
           </div>
@@ -394,91 +421,86 @@ export default function HolographicMemberCard({ member, isInteractive = true }: 
               WebkitBackfaceVisibility: "hidden",
               transform: "rotateY(180deg)",
               borderRadius: "20px",
-              background: "linear-gradient(135deg, rgba(10, 18, 35, 0.98) 0%, rgba(15, 28, 50, 0.95) 100%)",
-              border: "2px solid rgba(201, 162, 39, 0.4)",
-              boxShadow: "0 20px 40px -10px rgba(0,0,0,0.5)",
-              padding: "20px 24px",
+              background: "linear-gradient(135deg, rgba(19, 41, 82, 0.98) 0%, rgba(10, 20, 42, 0.99) 100%)",
+              border: "2px solid rgba(245, 158, 11, 0.6)",
+              boxShadow: "0 20px 45px -10px rgba(0, 0, 0, 0.5), 0 0 25px rgba(245, 158, 11, 0.2)",
+              padding: "18px 22px",
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
               overflow: "hidden",
             }}
           >
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                <span style={{ fontSize: "11px", fontWeight: 800, color: "var(--gold)", textTransform: "uppercase" }}>
-                  Official Verification Data
-                </span>
-                <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>PaUGSC 2026</span>
+            {/* Top Back Bar */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(245, 158, 11, 0.25)", paddingBottom: "8px" }}>
+              <div style={{ fontSize: "11px", fontWeight: 800, color: "var(--gold-light)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                Official Member Clearance · 2026
               </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "11px" }}>
-                <div style={{ background: "rgba(255,255,255,0.03)", padding: "6px 8px", borderRadius: "6px" }}>
-                  <span style={{ color: "var(--text-muted)", display: "block" }}>bKash TrxID</span>
-                  <strong style={{ color: "#fff", fontFamily: "monospace" }}>{member.transactionId || "N/A"}</strong>
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.03)", padding: "6px 8px", borderRadius: "6px" }}>
-                  <span style={{ color: "var(--text-muted)", display: "block" }}>Payment Fee</span>
-                  <strong style={{ color: "var(--gold)" }}>{member.paymentAmount || "200"} BDT (Paid)</strong>
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.03)", padding: "6px 8px", borderRadius: "6px" }}>
-                  <span style={{ color: "var(--text-muted)", display: "block" }}>Phone Number</span>
-                  <strong style={{ color: "#fff" }}>{member.phone || "N/A"}</strong>
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.03)", padding: "6px 8px", borderRadius: "6px" }}>
-                  <span style={{ color: "var(--text-muted)", display: "block" }}>Emergency Contact</span>
-                  <strong style={{ color: "#fff" }}>{member.emergencyContact || "Recorded"}</strong>
-                </div>
-              </div>
-
-              <div style={{ marginTop: "12px", fontSize: "10.5px", color: "var(--text-secondary)", lineHeight: 1.4 }}>
-                <div style={{ fontWeight: 700, color: "var(--gold-light)", marginBottom: "2px" }}>Selected Sports:</div>
-                <div>{sportsList.length > 0 ? sportsList.join(" · ") : "General Athletics"}</div>
+              <div style={{ fontSize: "11px", color: "var(--accent)", fontWeight: 700 }}>
+                Blood: <span style={{ color: "#ef4444", fontWeight: 800 }}>{member.bloodGroup || "N/A"}</span>
               </div>
             </div>
 
-            {/* Mock QR / Barcode Strip */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                background: "rgba(255,255,255,0.05)",
-                padding: "8px 12px",
-                borderRadius: "8px",
-                border: "1px dashed rgba(201,162,39,0.3)",
-              }}
-            >
-              <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>
-                Scan / Present slip during events & kit distribution
+            {/* Back Grid Details */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "11px", margin: "6px 0" }}>
+              <div style={{ background: "rgba(13, 27, 56, 0.8)", padding: "6px 10px", borderRadius: "8px" }}>
+                <span style={{ color: "var(--text-muted)", display: "block", fontSize: "9.5px" }}>Jersey Size</span>
+                <strong style={{ color: "#fff" }}>{member.jerseySize || "M"}</strong>
+                <span style={{ fontSize: "8.5px", color: "var(--gold-pale)", display: "block" }}>(For future use)</span>
               </div>
-              <div style={{ fontSize: "18px" }}>🎟️</div>
+
+              <div style={{ background: "rgba(13, 27, 56, 0.8)", padding: "6px 10px", borderRadius: "8px" }}>
+                <span style={{ color: "var(--text-muted)", display: "block", fontSize: "9.5px" }}>Fee Paid</span>
+                <strong style={{ color: "#22c55e" }}>200 BDT</strong>
+                <span style={{ fontSize: "8.5px", color: "#38bdf8", display: "block" }}>bKash Edu Fee</span>
+              </div>
+
+              <div style={{ background: "rgba(13, 27, 56, 0.8)", padding: "6px 10px", borderRadius: "8px" }}>
+                <span style={{ color: "var(--text-muted)", display: "block", fontSize: "9.5px" }}>Phone / WA</span>
+                <strong style={{ color: "#fff", fontSize: "10.5px" }}>{member.phone || "N/A"}</strong>
+              </div>
+
+              <div style={{ background: "rgba(13, 27, 56, 0.8)", padding: "6px 10px", borderRadius: "8px" }}>
+                <span style={{ color: "var(--text-muted)", display: "block", fontSize: "9.5px" }}>Issued On</span>
+                <strong style={{ color: "#fff", fontSize: "10px" }}>
+                  {new Date(member.registeredAt).toLocaleDateString()}
+                </strong>
+              </div>
+            </div>
+
+            {/* Back Disclaimer */}
+            <div style={{ fontSize: "9.5px", color: "var(--text-secondary)", lineHeight: 1.4, borderTop: "1px solid rgba(245,158,11,0.2)", paddingTop: "6px" }}>
+              This pass verifies general membership for PaUGSC 2026 events, league eligibility, and training. Present this card & PDF slip during club check-ins.
             </div>
           </div>
         </div>
       </div>
 
-      {/* Action Buttons below 3D Card */}
-      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}>
-        <button
-          onClick={() => setIsFlipped(!isFlipped)}
-          className="btn-outline"
-          style={{ padding: "8px 16px", fontSize: "12.5px", display: "inline-flex", alignItems: "center", gap: "6px" }}
-        >
-          <RefreshCw size={14} className={isFlipped ? "rotate-180 transition-transform" : "transition-transform"} />
-          {isFlipped ? "Show Front Pass" : "Flip to Back View"}
-        </button>
+      {/* Control Buttons */}
+      {isInteractive && (
+        <div style={{ display: "flex", gap: "10px", width: "100%", maxWidth: "480px" }}>
+          <button
+            type="button"
+            onClick={() => setIsFlipped(!isFlipped)}
+            className="btn-outline"
+            style={{ flex: 1, fontSize: "13px", padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+          >
+            <RefreshCw size={14} className={isFlipped ? "rotate-180 transition-transform" : "transition-transform"} />
+            {isFlipped ? "View Front" : "Flip 3D Pass"}
+          </button>
 
-        <button
-          onClick={handleDownloadPdf}
-          disabled={isDownloading}
-          className="btn-gold"
-          style={{ padding: "8px 20px", fontSize: "12.5px", display: "inline-flex", alignItems: "center", gap: "6px" }}
-        >
-          <Download size={14} />
-          {isDownloading ? "Generating PDF..." : "Download Official PDF Slip"}
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={isDownloading}
+            className="btn-neon-gold"
+            style={{ flex: 1.5, fontSize: "13px", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+          >
+            <Download size={15} />
+            {isDownloading ? "Generating PDF..." : "Download PDF Slip"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
