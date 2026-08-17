@@ -14,7 +14,7 @@ export const DEPARTMENTS = [
   "Biochemistry",
   "International Tourism & Hospitality Management (ITHM)",
   "Public Health (MPH)",
-  "Other Department",
+  "✍️ Other / Write Manually",
 ] as const;
 
 export const SPORTS_OPTIONS = [
@@ -59,7 +59,7 @@ export const memberRegistrationSchema = z.object({
     .max(100, "Full name must be under 100 characters"),
   studentId: z
     .string()
-    .min(8, "Student ID must be at least 8 characters")
+    .min(8, "Student ID must be at least 8 or 9 digits")
     .max(20, "Student ID is too long")
     .regex(/^\d{3}/, "Student ID must start with 3 digits (e.g. 242...)"),
   phone: z
@@ -69,7 +69,7 @@ export const memberRegistrationSchema = z.object({
     .regex(/^[\d+\-\s()]+$/, "Enter a valid phone number"),
   department: z
     .string()
-    .min(2, "Please select or enter your department"),
+    .min(2, "Please select or type your department name"),
   gender: z.enum(GENDERS, {
     error: "Please select your gender",
   }),
@@ -97,9 +97,25 @@ export const memberRegistrationSchema = z.object({
     .min(6, "Transaction ID (TrxID) must be at least 6 characters")
     .max(30, "Transaction ID is too long")
     .regex(/^[a-zA-Z0-9]+$/, "Transaction ID should only contain letters and numbers (e.g. 9J83KL...)"),
+  paymentSlipUrl: z
+    .string()
+    .optional()
+    .default(""),
+  isFlagged: z
+    .boolean()
+    .optional()
+    .default(false),
+  flaggedReason: z
+    .string()
+    .optional()
+    .default(""),
+  receiptStudentId: z
+    .string()
+    .optional()
+    .default(""),
 });
 
-export type MemberRegistrationFormValues = z.infer<typeof memberRegistrationSchema>;
+export type MemberRegistrationFormValues = z.input<typeof memberRegistrationSchema>;
 
 // Legacy validation schema for existing routes
 export const POSITIONS = [
@@ -118,7 +134,7 @@ export const studentFormSchema = z.object({
     .max(100, "Full name must be under 100 characters"),
   studentId: z
     .string()
-    .min(8, "Student ID must be at least 8 characters")
+    .min(8, "Student ID must be at least 8 or 9 digits")
     .max(20, "Student ID is too long")
     .regex(/^\d{3}/, "Student ID must start with 3 digits (e.g. 242...)"),
   phone: z

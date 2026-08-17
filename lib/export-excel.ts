@@ -30,6 +30,9 @@ export function exportMembersToExcel(members: AdminMemberRow[]) {
       "bKash TrxID": m.transactionId,
       "Payment Amount (BDT)": m.paymentAmount,
       "Payment Status": m.paymentStatus.toUpperCase(),
+      "🚩 ID Mismatch Flag": m.isFlagged ? "PROBABLE FAKE / MISMATCH" : "CLEAN",
+      "Receipt Scanned Student ID": m.receiptStudentId || "N/A",
+      "Flag Reason": m.flaggedReason || "",
       "Admin Notes": m.adminNotes || "",
       "Registered Date": new Date(m.registeredAt).toLocaleString("en-GB", { timeZone: "Asia/Dhaka" }),
     };

@@ -6,7 +6,7 @@ import Image from "next/image";
 import type { AdminMemberRow } from "@/actions/admin";
 import { updateMemberPaymentStatus, deleteMember, saveRegistrationSettings, resetAllMemberData } from "@/actions/admin";
 import { exportMembersToExcel } from "@/lib/export-excel";
-import { downloadAdminRosterPdf, downloadMemberSlipPdf } from "@/lib/export-pdf";
+import { downloadAdminRosterPdf, downloadMemberSlipPdf, downloadIdCardPdf } from "@/lib/export-pdf";
 import { DEPARTMENTS, SPORTS_OPTIONS } from "@/lib/validations";
 import HolographicMemberCard from "./HolographicMemberCard";
 import {
@@ -25,6 +25,10 @@ import {
   RefreshCw,
   Copy,
   Check,
+  Shield,
+  FileCheck,
+  Flag,
+  AlertOctagon,
 } from "lucide-react";
 
 interface Props {
@@ -50,6 +54,7 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [deptFilter, setDeptFilter] = useState<string>("All");
   const [sportFilter, setSportFilter] = useState<string>("All");
+  const [flagFilter, setFlagFilter] = useState<boolean>(false);
 
   // Date settings state
   const [startDate, setStartDate] = useState(toLocalDateTimeLocal(initialSettings?.start));
@@ -79,10 +84,12 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
       r.email.toLowerCase().includes(q) ||
       r.phone.includes(q) ||
       r.transactionId.toLowerCase().includes(q) ||
-      r.membershipNumber.toLowerCase().includes(q);
+      r.membershipNumber.toLowerCase().includes(q) ||
+      (r.receiptStudentId && r.receiptStudentId.toLowerCase().includes(q));
 
     const matchStatus = statusFilter === "All" || r.paymentStatus === statusFilter;
-    const matchDept = deptFilter === "All" || r.department.includes(deptFilter);
+    const matchDept = deptFilter === "All" || r.department.toLowerCase().includes(deptFilter.toLowerCase());
+    const matchFlag = !flagFilter || r.isFlagged || (r.receiptStudentId && r.receiptStudentId !== r.studentId);
 
     let matchSport = true;
     if (sportFilter !== "All") {
@@ -94,11 +101,12 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
       }
     }
 
-    return matchSearch && matchStatus && matchDept && matchSport;
+    return matchSearch && matchStatus && matchDept && matchSport && matchFlag;
   });
 
   const verifiedCount = rows.filter((r) => r.paymentStatus === "verified").length;
   const pendingCount = rows.filter((r) => r.paymentStatus === "pending").length;
+  const flaggedCount = rows.filter((r) => r.isFlagged || (r.receiptStudentId && r.receiptStudentId !== r.studentId)).length;
   const totalCollectedBDT = verifiedCount * 200;
 
   const handleUpdateStatus = async (id: string, newStatus: "pending" | "verified" | "rejected") => {
@@ -166,77 +174,99 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* Top Metric Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "14px" }}>
-        <div className="glass-card" style={{ padding: "18px 20px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
+        <div className="glass-card" style={{ padding: "16px 18px" }}>
           <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
             Total Registered
           </div>
-          <div style={{ fontSize: "28px", fontWeight: 900, color: "var(--text-primary)", marginTop: "4px" }}>
+          <div style={{ fontSize: "26px", fontWeight: 900, color: "var(--text-primary)", marginTop: "2px" }}>
             {rows.length}
           </div>
-          <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>Members applied</div>
+          <div style={{ fontSize: "11.5px", color: "var(--text-secondary)", marginTop: "2px" }}>Members applied</div>
         </div>
 
-        <div className="glass-card" style={{ padding: "18px 20px", borderColor: "rgba(34, 197, 94, 0.3)" }}>
+        <div className="glass-card" style={{ padding: "16px 18px", borderColor: "rgba(34, 197, 94, 0.3)" }}>
           <div style={{ fontSize: "11px", fontWeight: 700, color: "#4ade80", textTransform: "uppercase" }}>
             Verified Members
           </div>
-          <div style={{ fontSize: "28px", fontWeight: 900, color: "#4ade80", marginTop: "4px" }}>
+          <div style={{ fontSize: "26px", fontWeight: 900, color: "#4ade80", marginTop: "2px" }}>
             {verifiedCount}
           </div>
-          <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>Payment confirmed</div>
+          <div style={{ fontSize: "11.5px", color: "var(--text-secondary)", marginTop: "2px" }}>Payment confirmed</div>
         </div>
 
-        <div className="glass-card" style={{ padding: "18px 20px", borderColor: "rgba(245, 158, 11, 0.3)" }}>
+        <div className="glass-card" style={{ padding: "16px 18px", borderColor: "rgba(245, 158, 11, 0.3)" }}>
           <div style={{ fontSize: "11px", fontWeight: 700, color: "#fbbf24", textTransform: "uppercase" }}>
             Pending Verification
           </div>
-          <div style={{ fontSize: "28px", fontWeight: 900, color: "#fbbf24", marginTop: "4px" }}>
+          <div style={{ fontSize: "26px", fontWeight: 900, color: "#fbbf24", marginTop: "2px" }}>
             {pendingCount}
           </div>
-          <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>Awaiting Trx check</div>
+          <div style={{ fontSize: "11.5px", color: "var(--text-secondary)", marginTop: "2px" }}>Awaiting check</div>
         </div>
 
-        <div className="glass-card" style={{ padding: "18px 20px", borderColor: "rgba(201, 162, 39, 0.3)" }}>
+        {/* 🚩 Flagged / Suspected Fake Metric */}
+        <div
+          className="glass-card"
+          onClick={() => setFlagFilter(!flagFilter)}
+          style={{
+            padding: "16px 18px",
+            borderColor: flaggedCount > 0 ? "rgba(239, 68, 68, 0.5)" : "rgba(255,255,255,0.1)",
+            background: flagFilter ? "rgba(239, 68, 68, 0.18)" : undefined,
+            cursor: "pointer",
+          }}
+        >
+          <div style={{ fontSize: "11px", fontWeight: 700, color: "#f87171", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "4px" }}>
+            <Flag size={12} color="#ef4444" /> Flagged / Suspect ID
+          </div>
+          <div style={{ fontSize: "26px", fontWeight: 900, color: "#f87171", marginTop: "2px" }}>
+            {flaggedCount}
+          </div>
+          <div style={{ fontSize: "11.5px", color: "#fca5a5", marginTop: "2px" }}>
+            {flagFilter ? "Showing flagged only (Click to clear)" : "Click to filter flagged"}
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ padding: "16px 18px", borderColor: "rgba(201, 162, 39, 0.3)" }}>
           <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--gold)", textTransform: "uppercase" }}>
             Fees Verified (BDT)
           </div>
-          <div style={{ fontSize: "28px", fontWeight: 900, color: "var(--gold)", marginTop: "4px" }}>
+          <div style={{ fontSize: "26px", fontWeight: 900, color: "var(--gold)", marginTop: "2px" }}>
             ৳{totalCollectedBDT.toLocaleString()}
           </div>
-          <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>@ 200 BDT/member</div>
+          <div style={{ fontSize: "11.5px", color: "var(--text-secondary)", marginTop: "2px" }}>@ 200 BDT/member</div>
         </div>
       </div>
 
-      {/* Admin Controllers: Registration Window & DB Reset */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
+      {/* Admin Quick Action Controls */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "14px" }}>
         {/* Registration Window */}
-        <div className="glass-card" style={{ padding: "20px 24px" }}>
-          <h3 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
-            <Calendar size={16} color="var(--gold)" />
+        <div className="glass-card" style={{ padding: "16px 20px" }}>
+          <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <Calendar size={15} color="var(--gold)" />
             Member Registration Window
           </h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
             <div>
-              <label style={{ display: "block", fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>Start Date & Time</label>
+              <label style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", marginBottom: "3px" }}>Start</label>
               <input
                 type="datetime-local"
                 className="input-field"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                style={{ fontSize: "12.5px" }}
+                style={{ fontSize: "12px", padding: "6px 8px" }}
               />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>End Date & Time</label>
+              <label style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", marginBottom: "3px" }}>End</label>
               <input
                 type="datetime-local"
                 className="input-field"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                style={{ fontSize: "12.5px" }}
+                style={{ fontSize: "12px", padding: "6px 8px" }}
               />
             </div>
           </div>
@@ -244,81 +274,128 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
             onClick={handleSaveDates}
             disabled={isSavingDates}
             className="btn-gold"
-            style={{ width: "100%", padding: "9px", fontSize: "13px" }}
+            style={{ width: "100%", padding: "7px", fontSize: "12.5px" }}
           >
             {isSavingDates ? "Saving..." : "Save Window Dates"}
           </button>
-          {dateMessage && <p style={{ fontSize: "12px", margin: "8px 0 0", color: "var(--gold)" }}>{dateMessage}</p>}
+          {dateMessage && (
+            <div style={{ fontSize: "11.5px", marginTop: "6px", textAlign: "center", color: "#fbbf24" }}>
+              {dateMessage}
+            </div>
+          )}
         </div>
 
-        {/* Database Clean & Export Quick Box */}
-        <div className="glass-card" style={{ padding: "20px 24px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-          <div>
-            <h3 style={{ fontSize: "15px", fontWeight: 700, marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
-              <Download size={16} color="var(--gold)" />
-              Bulk Exports & Records
-            </h3>
-            <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: 1.5, margin: "0 0 16px" }}>
-              Export the complete members roster with all university and payment data in one click.
-            </p>
-          </div>
-
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        {/* Data Export & Reset */}
+        <div className="glass-card" style={{ padding: "16px 20px" }}>
+          <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px", color: "#f87171" }}>
+            <FileCheck size={15} />
+            Data Export & Roster
+          </h3>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
             <button
               onClick={() => exportMembersToExcel(filtered)}
-              disabled={filtered.length === 0}
-              className="btn-gold"
-              style={{ flex: 1, padding: "10px 16px", fontSize: "13px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+              className="btn-outline"
+              style={{ flex: 1, padding: "8px 10px", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "5px", justifyContent: "center" }}
             >
-              <FileSpreadsheet size={15} /> Export Excel (.xlsx)
+              <FileSpreadsheet size={14} color="#22c55e" /> Excel ({filtered.length})
             </button>
             <button
               onClick={() => downloadAdminRosterPdf(filtered)}
-              disabled={filtered.length === 0}
               className="btn-outline"
-              style={{ flex: 1, padding: "10px 16px", fontSize: "13px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+              style={{ flex: 1, padding: "8px 10px", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "5px", justifyContent: "center" }}
             >
-              <FileText size={15} /> Export PDF Roster
+              <FileText size={14} color="#38bdf8" /> PDF Roster
             </button>
           </div>
+          <button
+            onClick={() => setShowResetModal(true)}
+            style={{
+              width: "100%",
+              background: "rgba(239, 68, 68, 0.08)",
+              border: "1px solid rgba(239, 68, 68, 0.25)",
+              color: "#f87171",
+              padding: "6px",
+              borderRadius: "8px",
+              fontSize: "11.5px",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "4px",
+            }}
+          >
+            <Trash2 size={12} /> Reset Member Database
+          </button>
         </div>
       </div>
 
-      {/* Search & Filter Toolbar */}
-      <div className="glass-card" style={{ padding: "16px 20px" }}>
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
-          {/* Search Box */}
-          <div style={{ position: "relative", flex: "1 1 260px" }}>
-            <Search size={16} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
-            <input
-              type="text"
-              className="input-field"
-              placeholder="Search Name, ID, Phone, Email, TrxID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ paddingLeft: "38px", fontSize: "13.5px" }}
-            />
-          </div>
+      {/* Search & Filters */}
+      <div
+        className="glass-card"
+        style={{
+          padding: "12px 16px",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "10px",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ position: "relative", flex: "1 1 240px" }}>
+          <Search size={15} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+          <input
+            type="text"
+            className="input-field"
+            placeholder="Search Name, Student ID, TrxID, Phone..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ paddingLeft: "32px", fontSize: "12.5px", padding: "7px 10px 7px 32px" }}
+          />
+        </div>
 
-          {/* Payment Status Filter */}
-          <div style={{ display: "flex", gap: "6px" }}>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+          {/* Flag Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setFlagFilter(!flagFilter)}
+            style={{
+              background: flagFilter ? "rgba(239, 68, 68, 0.3)" : "rgba(239, 68, 68, 0.1)",
+              border: flagFilter ? "1.5px solid #ef4444" : "1px solid rgba(239, 68, 68, 0.3)",
+              color: "#fca5a5",
+              padding: "5px 10px",
+              borderRadius: "6px",
+              fontSize: "11.5px",
+              fontWeight: 800,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            <Flag size={12} color="#ef4444" />
+            {flagFilter ? "Showing Flagged Only" : `🚩 Flagged (${flaggedCount})`}
+          </button>
+
+          {/* Status Filter Buttons */}
+          <div style={{ display: "flex", background: "var(--navy-mid)", borderRadius: "8px", padding: "2px", border: "1px solid var(--glass-border)" }}>
             {["All", "pending", "verified", "rejected"].map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
                 style={{
-                  padding: "7px 12px",
-                  borderRadius: "8px",
-                  border: statusFilter === st ? "1px solid var(--gold)" : "1px solid rgba(255,255,255,0.08)",
-                  background: statusFilter === st ? "rgba(201,162,39,0.15)" : "rgba(255,255,255,0.03)",
-                  color: statusFilter === st ? "var(--gold)" : "var(--text-secondary)",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  textTransform: "capitalize",
+                  background: statusFilter === st ? "rgba(245, 158, 11, 0.25)" : "transparent",
+                  color: statusFilter === st ? "#fbbf24" : "var(--text-muted)",
+                  border: statusFilter === st ? "1px solid rgba(245, 158, 11, 0.4)" : "none",
+                  padding: "4px 10px",
+                  borderRadius: "6px",
+                  fontSize: "11.5px",
+                  fontWeight: 700,
                   cursor: "pointer",
+                  textTransform: "capitalize",
+                  transition: "all 0.15s",
                 }}
               >
-                {st === "All" ? "All Status" : st}
+                {st === "All" ? "All" : st}
               </button>
             ))}
           </div>
@@ -328,7 +405,7 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
             className="input-field"
             value={sportFilter}
             onChange={(e) => setSportFilter(e.target.value)}
-            style={{ width: "auto", minWidth: "140px", fontSize: "12.5px", background: "var(--navy-mid)" }}
+            style={{ width: "auto", minWidth: "120px", fontSize: "12px", padding: "6px 10px", background: "var(--navy-mid)" }}
           >
             <option value="All">All Sports</option>
             {SPORTS_OPTIONS.map((s) => (
@@ -340,115 +417,142 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
         </div>
       </div>
 
-      {/* Main Members Table */}
+      {/* Main Members Table - Sleek, Compact, Clean layout with Fraud Flags */}
       {filtered.length === 0 ? (
-        <div className="glass-card" style={{ padding: "48px", textAlign: "center" }}>
-          <div style={{ fontSize: "36px", marginBottom: "10px" }}>🔍</div>
-          <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>No members found</h3>
-          <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>Try adjusting your search query or filters.</p>
+        <div className="glass-card" style={{ padding: "40px", textAlign: "center" }}>
+          <div style={{ fontSize: "32px", marginBottom: "8px" }}>🔍</div>
+          <h3 style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>No members found</h3>
+          <p style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>Try adjusting your search query or filters.</p>
         </div>
       ) : (
         <div className="glass-card" style={{ overflow: "hidden", padding: 0 }}>
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-container">
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Member</th>
-                  <th>Student ID</th>
-                  <th>Department</th>
-                  <th>bKash TrxID</th>
-                  <th>Status</th>
-                  <th>Sports</th>
-                  <th>Registered</th>
-                  <th>Actions</th>
+                  <th style={{ width: "26%" }}>Member Name</th>
+                  <th style={{ width: "16%" }}>Student ID</th>
+                  <th style={{ width: "22%" }}>Department</th>
+                  <th style={{ width: "16%" }}>bKash TrxID</th>
+                  <th style={{ width: "10%" }}>Status</th>
+                  <th style={{ width: "10%", textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((m) => {
-                  let sports: string[] = [];
-                  try {
-                    const p = JSON.parse(m.sportsInterests);
-                    sports = Array.isArray(p) ? p : [m.sportsInterests];
-                  } catch {
-                    sports = [m.sportsInterests];
-                  }
-
                   const isRowVerified = m.paymentStatus === "verified";
                   const isRowRejected = m.paymentStatus === "rejected";
+                  const isRowFlagged = Boolean(
+                    m.isFlagged || (m.receiptStudentId && m.receiptStudentId !== m.studentId)
+                  );
 
                   return (
-                    <tr key={m.id}>
+                    <tr
+                      key={m.id}
+                      style={{
+                        background: isRowFlagged ? "rgba(239, 68, 68, 0.08)" : undefined,
+                      }}
+                    >
                       {/* Member profile */}
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                           {m.userAvatar ? (
                             <Image
                               src={m.userAvatar}
                               alt={m.fullName}
-                              width={34}
-                              height={34}
-                              style={{ borderRadius: "50%", border: "1px solid var(--gold)", flexShrink: 0 }}
+                              width={32}
+                              height={32}
+                              style={{ borderRadius: "50%", border: isRowFlagged ? "1.5px solid #ef4444" : "1.5px solid var(--gold)", flexShrink: 0 }}
                             />
                           ) : (
                             <div
                               style={{
-                                width: 34,
-                                height: 34,
+                                width: 32,
+                                height: 32,
                                 borderRadius: "50%",
-                                background: "var(--navy-mid)",
-                                border: "1px solid var(--gold)",
+                                background: isRowFlagged ? "rgba(239,68,68,0.2)" : "var(--navy-mid)",
+                                border: isRowFlagged ? "1.5px solid #ef4444" : "1.5px solid var(--gold)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 fontWeight: 800,
                                 fontSize: "13px",
-                                color: "var(--gold)",
+                                color: isRowFlagged ? "#f87171" : "var(--gold)",
                                 flexShrink: 0,
                               }}
                             >
                               {m.fullName[0]}
                             </div>
                           )}
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: "13.5px", color: "var(--text-primary)" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 800, fontSize: "13px", color: "var(--text-primary)", whiteSpace: "nowrap" }}>
                               {m.fullName}
                             </div>
-                            <div style={{ fontSize: "11.5px", color: "var(--text-muted)" }}>
-                              {m.membershipNumber} · {m.phone}
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                              {m.phone}
                             </div>
+                            {/* 🚩 Red Flag Pill in Table */}
+                            {isRowFlagged && (
+                              <div
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "3px",
+                                  fontSize: "10px",
+                                  fontWeight: 800,
+                                  background: "rgba(239, 68, 68, 0.25)",
+                                  color: "#fca5a5",
+                                  border: "1px solid rgba(239, 68, 68, 0.5)",
+                                  borderRadius: "4px",
+                                  padding: "1px 5px",
+                                  marginTop: "2px",
+                                }}
+                                title={m.flaggedReason || `Slip ID: ${m.receiptStudentId} != Form ID: ${m.studentId}`}
+                              >
+                                <Flag size={9} color="#ef4444" />
+                                <span>SUSPECT / ID MISMATCH</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
 
                       {/* Student ID */}
                       <td>
-                        <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "13px", color: "var(--gold)" }}>
+                        <div style={{ fontFamily: "monospace", fontWeight: 800, fontSize: "13px", color: isRowFlagged ? "#f87171" : "var(--gold)" }}>
                           {m.studentId}
-                        </span>
-                        <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>Sem {m.semester}</div>
+                        </div>
+                        <div style={{ fontSize: "11px", color: "#93c5fd" }}>
+                          Sem {m.semester}
+                        </div>
+                        {isRowFlagged && m.receiptStudentId && (
+                          <div style={{ fontSize: "10px", color: "#fca5a5", fontFamily: "monospace" }}>
+                            Slip: {m.receiptStudentId}
+                          </div>
+                        )}
                       </td>
 
                       {/* Department */}
                       <td>
-                        <div style={{ fontSize: "12.5px", maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>
                           {m.department}
                         </div>
-                        <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>Jersey: {m.jerseySize}</div>
                       </td>
 
                       {/* TrxID */}
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
                           <span
                             style={{
                               fontFamily: "monospace",
-                              fontWeight: 700,
-                              fontSize: "12.5px",
-                              background: "rgba(226, 19, 110, 0.15)",
+                              fontWeight: 800,
+                              fontSize: "12px",
+                              background: "rgba(226, 19, 110, 0.16)",
                               color: "#f472b6",
                               padding: "2px 6px",
                               borderRadius: "4px",
-                              border: "1px solid rgba(226, 19, 110, 0.3)",
+                              border: "1px solid rgba(226, 19, 110, 0.35)",
+                              letterSpacing: "0.03em",
                             }}
                           >
                             {m.transactionId}
@@ -456,14 +560,11 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
                           <button
                             type="button"
                             onClick={() => copyTrx(m.transactionId)}
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "2px" }}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "1px" }}
                             title="Copy TrxID"
                           >
-                            {copiedTrxId === m.transactionId ? <Check size={13} color="#4ade80" /> : <Copy size={13} />}
+                            {copiedTrxId === m.transactionId ? <Check size={12} color="#4ade80" /> : <Copy size={12} />}
                           </button>
-                        </div>
-                        <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
-                          Paid: ৳{m.paymentAmount || "200"}
                         </div>
                       </td>
 
@@ -472,86 +573,53 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
                         <span
                           style={{
                             padding: "3px 8px",
-                            borderRadius: "12px",
-                            fontSize: "11px",
-                            fontWeight: 700,
+                            borderRadius: "10px",
+                            fontSize: "10.5px",
+                            fontWeight: 800,
                             textTransform: "uppercase",
                             display: "inline-flex",
                             alignItems: "center",
-                            gap: "4px",
                             background: isRowVerified
-                              ? "rgba(34, 197, 94, 0.15)"
+                              ? "rgba(34, 197, 94, 0.18)"
                               : isRowRejected
-                              ? "rgba(239, 68, 68, 0.15)"
-                              : "rgba(245, 158, 11, 0.15)",
+                              ? "rgba(239, 68, 68, 0.18)"
+                              : "rgba(245, 158, 11, 0.18)",
                             color: isRowVerified ? "#4ade80" : isRowRejected ? "#f87171" : "#fbbf24",
                             border: isRowVerified
-                              ? "1px solid rgba(34, 197, 94, 0.3)"
+                              ? "1px solid rgba(34, 197, 94, 0.4)"
                               : isRowRejected
-                              ? "1px solid rgba(239, 68, 68, 0.3)"
-                              : "1px solid rgba(245, 158, 11, 0.3)",
+                              ? "1px solid rgba(239, 68, 68, 0.4)"
+                              : "1px solid rgba(245, 158, 11, 0.4)",
                           }}
                         >
                           {isRowVerified ? "Verified" : isRowRejected ? "Rejected" : "Pending"}
                         </span>
                       </td>
 
-                      {/* Sports */}
-                      <td>
-                        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", maxWidth: "160px" }}>
-                          {sports.slice(0, 2).map((s) => (
-                            <span
-                              key={s}
-                              style={{
-                                fontSize: "10.5px",
-                                background: "rgba(255,255,255,0.05)",
-                                padding: "2px 6px",
-                                borderRadius: "4px",
-                                color: "var(--text-secondary)",
-                              }}
-                            >
-                              {s}
-                            </span>
-                          ))}
-                          {sports.length > 2 && (
-                            <span style={{ fontSize: "10.5px", color: "var(--gold)" }}>+{sports.length - 2}</span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Registered Date */}
-                      <td>
-                        <span style={{ fontSize: "11.5px", color: "var(--text-muted)" }}>
-                          {new Date(m.registeredAt).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                          })}
-                        </span>
-                      </td>
-
                       {/* Actions */}
-                      <td>
-                        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                      <td style={{ textAlign: "right" }}>
+                        <div style={{ display: "inline-flex", gap: "5px", alignItems: "center" }}>
                           {/* Quick Verify Toggle */}
                           {!isRowVerified && (
                             <button
                               onClick={() => handleUpdateStatus(m.id, "verified")}
                               disabled={updatingId === m.id}
-                              title="Mark as Verified Member"
+                              title="Mark as Verified"
                               style={{
                                 background: "rgba(34, 197, 94, 0.15)",
                                 border: "1px solid rgba(34, 197, 94, 0.4)",
                                 color: "#4ade80",
-                                padding: "5px 8px",
+                                padding: "4px 8px",
                                 borderRadius: "6px",
                                 cursor: "pointer",
-                                fontSize: "12px",
+                                fontSize: "11.5px",
+                                fontWeight: 700,
                                 display: "inline-flex",
                                 alignItems: "center",
-                                gap: "4px",
+                                gap: "3px",
                               }}
                             >
-                              <CheckCircle size={13} /> Verify
+                              <CheckCircle size={12} /> Verify
                             </button>
                           )}
 
@@ -564,10 +632,11 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
                                 background: "rgba(245, 158, 11, 0.15)",
                                 border: "1px solid rgba(245, 158, 11, 0.4)",
                                 color: "#fbbf24",
-                                padding: "5px 8px",
+                                padding: "4px 8px",
                                 borderRadius: "6px",
                                 cursor: "pointer",
-                                fontSize: "12px",
+                                fontSize: "11.5px",
+                                fontWeight: 700,
                               }}
                             >
                               Pending
@@ -578,10 +647,10 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
                           <button
                             onClick={() => setSelectedMember(m)}
                             className="btn-outline"
-                            style={{ padding: "5px 8px", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                            style={{ padding: "4px 8px", fontSize: "11.5px", display: "inline-flex", alignItems: "center", gap: "3px" }}
                             title="Inspect Details & Pass"
                           >
-                            <Eye size={13} /> View
+                            <Eye size={12} /> View
                           </button>
 
                           {/* Delete */}
@@ -591,13 +660,13 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
                               background: "rgba(239, 68, 68, 0.08)",
                               border: "1px solid rgba(239, 68, 68, 0.25)",
                               color: "#f87171",
-                              padding: "5px 7px",
+                              padding: "4px 6px",
                               borderRadius: "6px",
                               cursor: "pointer",
                             }}
-                            title="Delete Member"
+                            title="Delete"
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={12} />
                           </button>
                         </div>
                       </td>
@@ -610,17 +679,17 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
 
           <div
             style={{
-              padding: "12px 20px",
+              padding: "10px 16px",
               borderTop: "1px solid var(--glass-border)",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              fontSize: "12.5px",
+              fontSize: "11.5px",
               color: "var(--text-muted)",
             }}
           >
             <span>
-              Showing {filtered.length} of {rows.length} total members
+              Showing {filtered.length} of {rows.length} total members ({flaggedCount} flagged)
             </span>
             <span>Primeasia University Games & Sports Club · 2026</span>
           </div>
@@ -648,20 +717,22 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
           <div
             className="glass-card animate-fade-in-up"
             style={{
-              maxWidth: "680px",
+              maxWidth: "640px",
               width: "100%",
               maxHeight: "90vh",
               overflowY: "auto",
-              padding: "32px",
-              border: "1px solid var(--glass-border)",
+              padding: "28px",
+              border: (selectedMember.isFlagged || (selectedMember.receiptStudentId && selectedMember.receiptStudentId !== selectedMember.studentId))
+                ? "2px solid #ef4444"
+                : "1px solid var(--glass-border)",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "18px" }}>
               <div>
-                <h2 style={{ fontSize: "20px", fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>
+                <h2 style={{ fontSize: "19px", fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>
                   {selectedMember.fullName}
                 </h2>
-                <p style={{ fontSize: "13px", color: "var(--gold)", margin: "2px 0 0", fontFamily: "monospace" }}>
+                <p style={{ fontSize: "12.5px", color: "var(--gold)", margin: "2px 0 0", fontFamily: "monospace" }}>
                   {selectedMember.membershipNumber} · {selectedMember.email}
                 </p>
               </div>
@@ -670,8 +741,33 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
               </button>
             </div>
 
+            {/* 🚩 Loud Fraud Alert in Modal if Flagged */}
+            {(selectedMember.isFlagged || (selectedMember.receiptStudentId && selectedMember.receiptStudentId !== selectedMember.studentId)) && (
+              <div
+                style={{
+                  background: "rgba(239, 68, 68, 0.18)",
+                  border: "1.5px solid #ef4444",
+                  borderRadius: "10px",
+                  padding: "14px 16px",
+                  marginBottom: "18px",
+                  color: "#fca5a5",
+                }}
+              >
+                <div style={{ fontWeight: 900, fontSize: "13.5px", color: "#fca5a5", display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                  <AlertOctagon size={18} color="#ef4444" /> FRAUD WARNING: Probable Fake / Mismatched Payment Slip!
+                </div>
+                <div style={{ fontSize: "12.5px", lineHeight: 1.5, color: "#ffffff" }}>
+                  <div>• <strong>Registered Student ID:</strong> <span style={{ fontFamily: "monospace", color: "#93c5fd" }}>{selectedMember.studentId}</span></div>
+                  <div>• <strong>Receipt Detected Student ID:</strong> <span style={{ fontFamily: "monospace", color: "#fef08a" }}>{selectedMember.receiptStudentId || "Unknown / Mismatch"}</span></div>
+                  {selectedMember.flaggedReason && (
+                    <div>• <strong>Flag Reason:</strong> {selectedMember.flaggedReason}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* 3D Holographic Card Preview in Modal */}
-            <div style={{ margin: "16px 0 24px" }}>
+            <div style={{ margin: "14px 0 20px" }}>
               <HolographicMemberCard
                 member={{
                   ...selectedMember,
@@ -681,22 +777,22 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
             </div>
 
             {/* Member Details Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px", marginBottom: "20px" }}>
-              <div style={{ background: "rgba(255,255,255,0.03)", padding: "10px 14px", borderRadius: "10px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px", marginBottom: "18px" }}>
+              <div style={{ background: "rgba(255,255,255,0.03)", padding: "8px 12px", borderRadius: "8px" }}>
                 <span style={{ fontSize: "11px", color: "var(--text-muted)", display: "block" }}>Student ID</span>
-                <strong style={{ fontSize: "13.5px", color: "var(--text-primary)" }}>{selectedMember.studentId}</strong>
+                <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>{selectedMember.studentId}</strong>
               </div>
-              <div style={{ background: "rgba(255,255,255,0.03)", padding: "10px 14px", borderRadius: "10px" }}>
+              <div style={{ background: "rgba(255,255,255,0.03)", padding: "8px 12px", borderRadius: "8px" }}>
                 <span style={{ fontSize: "11px", color: "var(--text-muted)", display: "block" }}>Department</span>
-                <strong style={{ fontSize: "13.5px", color: "var(--text-primary)" }}>{selectedMember.department}</strong>
+                <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>{selectedMember.department}</strong>
               </div>
-              <div style={{ background: "rgba(255,255,255,0.03)", padding: "10px 14px", borderRadius: "10px" }}>
-                <span style={{ fontSize: "11px", color: "var(--text-muted)", display: "block" }}>Phone / WhatsApp</span>
-                <strong style={{ fontSize: "13.5px", color: "var(--text-primary)" }}>{selectedMember.phone}</strong>
+              <div style={{ background: "rgba(255,255,255,0.03)", padding: "8px 12px", borderRadius: "8px" }}>
+                <span style={{ fontSize: "11px", color: "var(--text-muted)", display: "block" }}>Phone</span>
+                <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>{selectedMember.phone}</strong>
               </div>
-              <div style={{ background: "rgba(255,255,255,0.03)", padding: "10px 14px", borderRadius: "10px" }}>
+              <div style={{ background: "rgba(255,255,255,0.03)", padding: "8px 12px", borderRadius: "8px" }}>
                 <span style={{ fontSize: "11px", color: "var(--text-muted)", display: "block" }}>bKash TrxID</span>
-                <strong style={{ fontSize: "13.5px", color: "#f472b6", fontFamily: "monospace" }}>{selectedMember.transactionId}</strong>
+                <strong style={{ fontSize: "13px", color: "#f472b6", fontFamily: "monospace" }}>{selectedMember.transactionId}</strong>
               </div>
             </div>
 
@@ -704,23 +800,23 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
             <div
               style={{
                 background: "rgba(255,255,255,0.03)",
-                padding: "16px",
-                borderRadius: "12px",
+                padding: "14px",
+                borderRadius: "10px",
                 border: "1px solid var(--glass-border)",
-                marginBottom: "20px",
+                marginBottom: "18px",
               }}
             >
-              <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "10px" }}>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "8px" }}>
                 Update Payment Verification Status:
               </div>
-              <div style={{ display: "flex", gap: "10px" }}>
+              <div style={{ display: "flex", gap: "8px" }}>
                 <button
                   onClick={() => handleUpdateStatus(selectedMember.id, "verified")}
                   className="btn-gold"
                   style={{
                     flex: 1,
-                    padding: "9px",
-                    fontSize: "13px",
+                    padding: "8px",
+                    fontSize: "12.5px",
                     background: selectedMember.paymentStatus === "verified" ? "#22c55e" : undefined,
                     color: "#fff",
                   }}
@@ -730,7 +826,7 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
                 <button
                   onClick={() => handleUpdateStatus(selectedMember.id, "pending")}
                   className="btn-outline"
-                  style={{ flex: 1, padding: "9px", fontSize: "13px" }}
+                  style={{ flex: 1, padding: "8px", fontSize: "12.5px" }}
                 >
                   ⏳ Set Pending
                 </button>
@@ -739,26 +835,76 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
                   className="btn-ghost"
                   style={{
                     flex: 1,
-                    padding: "9px",
-                    fontSize: "13px",
+                    padding: "8px",
+                    fontSize: "12.5px",
                     color: "#f87171",
                     background: "rgba(239,68,68,0.1)",
                   }}
                 >
-                  ✕ Reject
+                  ✕ Reject / Fake
                 </button>
               </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            {/* Modal Bottom Actions */}
+            <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
               <button
-                onClick={() => downloadMemberSlipPdf(selectedMember)}
-                className="btn-outline"
-                style={{ padding: "8px 16px", fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                onClick={() =>
+                  downloadIdCardPdf({
+                    membershipNumber: selectedMember.membershipNumber,
+                    fullName: selectedMember.fullName,
+                    studentId: selectedMember.studentId,
+                    email: selectedMember.email,
+                    phone: selectedMember.phone,
+                    department: selectedMember.department,
+                    semester: selectedMember.semester,
+                    gender: selectedMember.gender,
+                    bloodGroup: selectedMember.bloodGroup,
+                    sportsInterests: selectedMember.sportsInterests,
+                    jerseySize: selectedMember.jerseySize,
+                    emergencyContact: selectedMember.emergencyContact,
+                    bkashNumber: selectedMember.bkashNumber,
+                    transactionId: selectedMember.transactionId,
+                    paymentAmount: selectedMember.paymentAmount,
+                    paymentStatus: selectedMember.paymentStatus,
+                    registeredAt: selectedMember.registeredAt,
+                  })
+                }
+                className="btn-gold"
+                style={{ flex: 1.2, padding: "9px 12px", fontSize: "12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
               >
-                <Download size={14} /> Download Official PDF Slip
+                <Download size={14} /> Download Official ID Card
               </button>
-              <button onClick={() => setSelectedMember(null)} className="btn-ghost" style={{ padding: "8px 16px", fontSize: "13px" }}>
+
+              <button
+                onClick={() =>
+                  downloadMemberSlipPdf({
+                    membershipNumber: selectedMember.membershipNumber,
+                    fullName: selectedMember.fullName,
+                    studentId: selectedMember.studentId,
+                    email: selectedMember.email,
+                    phone: selectedMember.phone,
+                    department: selectedMember.department,
+                    semester: selectedMember.semester,
+                    gender: selectedMember.gender,
+                    bloodGroup: selectedMember.bloodGroup,
+                    sportsInterests: selectedMember.sportsInterests,
+                    jerseySize: selectedMember.jerseySize,
+                    emergencyContact: selectedMember.emergencyContact,
+                    bkashNumber: selectedMember.bkashNumber,
+                    transactionId: selectedMember.transactionId,
+                    paymentAmount: selectedMember.paymentAmount,
+                    paymentStatus: selectedMember.paymentStatus,
+                    registeredAt: selectedMember.registeredAt,
+                  })
+                }
+                className="btn-outline"
+                style={{ flex: 1, padding: "9px 12px", fontSize: "12px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+              >
+                <FileText size={14} /> Download Slip
+              </button>
+
+              <button onClick={() => setSelectedMember(null)} className="btn-outline" style={{ padding: "9px 16px", fontSize: "12px" }}>
                 Close
               </button>
             </div>
@@ -766,7 +912,7 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
         </div>
       )}
 
-      {/* Secure Database Reset Modal */}
+      {/* Database Wipe Reset Modal */}
       {showResetModal && (
         <div
           style={{
@@ -775,44 +921,65 @@ export default function AdminMemberTable({ rows, initialSettings }: Props) {
             left: 0,
             right: 0,
             bottom: 0,
-            background: "rgba(0, 0, 0, 0.85)",
-            backdropFilter: "blur(8px)",
+            background: "rgba(0, 0, 0, 0.9)",
+            backdropFilter: "blur(10px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 110,
+            zIndex: 200,
             padding: "20px",
           }}
         >
-          <div className="glass-card animate-fade-in-up" style={{ maxWidth: "480px", width: "100%", padding: "32px", border: "1px solid rgba(239,68,68,0.4)" }}>
-            <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#fca5a5", marginBottom: "10px" }}>
-              ⚠️ Clear All Registered Members Data
-            </h2>
-            <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "16px" }}>
-              This will permanently delete all registered member records, bKash transactions, and associated files.
+          <div
+            className="glass-card animate-fade-in-up"
+            style={{
+              maxWidth: "460px",
+              width: "100%",
+              padding: "24px",
+              border: "1.5px solid #ef4444",
+              background: "#0d1527",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#f87171", marginBottom: "12px" }}>
+              <AlertTriangle size={22} />
+              <h3 style={{ fontSize: "17px", fontWeight: 800, margin: 0 }}>Reset Member Database</h3>
+            </div>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "14px" }}>
+              This will permanently delete <strong>all registered members and their bKash transaction data</strong>.
             </p>
-            <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginBottom: "8px" }}>
-              Type <strong style={{ color: "var(--gold)" }}>RESET PAUSC 2026</strong> to confirm:
-            </p>
-            <input
-              type="text"
-              className="input-field"
-              placeholder="RESET PAUSC 2026"
-              value={resetConfirmText}
-              onChange={(e) => setResetConfirmText(e.target.value)}
-              style={{ marginBottom: "20px" }}
-            />
-            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-              <button onClick={() => setShowResetModal(false)} className="btn-ghost">
-                Cancel
-              </button>
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ display: "block", fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>
+                Type <strong style={{ color: "#fbbf24" }}>RESET PAUSC 2026</strong> to confirm:
+              </label>
+              <input
+                type="text"
+                className="input-field"
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                placeholder="RESET PAUSC 2026"
+                style={{ borderColor: "#ef4444" }}
+              />
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
               <button
                 onClick={handleResetDatabase}
                 disabled={resetConfirmText !== "RESET PAUSC 2026" || isResetting}
-                className="btn-gold"
-                style={{ background: "#ef4444", borderColor: "#ef4444", color: "#fff" }}
+                style={{
+                  flex: 1,
+                  background: resetConfirmText === "RESET PAUSC 2026" ? "#ef4444" : "rgba(239,68,68,0.2)",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "9px",
+                  fontWeight: 800,
+                  fontSize: "12.5px",
+                  cursor: resetConfirmText === "RESET PAUSC 2026" ? "pointer" : "not-allowed",
+                }}
               >
-                {isResetting ? "Wiping..." : "Permanently Delete"}
+                {isResetting ? "Wiping Database..." : "Permanently Wipe Data"}
+              </button>
+              <button onClick={() => setShowResetModal(false)} className="btn-outline" style={{ padding: "9px 16px", fontSize: "12.5px" }}>
+                Cancel
               </button>
             </div>
           </div>

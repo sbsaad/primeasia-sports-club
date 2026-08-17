@@ -6,6 +6,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "pausc-default-secret-key-2026-sports",
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -41,7 +42,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
     async session({ session, token }) {
       if (session.user && token.sub) {
-        // Attach google_id to session for easy lookup
         session.user.id = token.sub;
       }
       return session;

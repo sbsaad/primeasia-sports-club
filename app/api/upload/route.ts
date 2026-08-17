@@ -9,7 +9,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const jsonResponse = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async (_pathname: string) => {
+      onBeforeGenerateToken: async () => {
         // This function runs on the client's initial request.
         // It has access to the user's session cookies.
         const session = await auth();
@@ -23,8 +23,14 @@ export async function POST(request: Request): Promise<NextResponse> {
         const callbackUrl = `${requestUrl.protocol}//${requestUrl.host}/api/upload`;
 
         return {
-          allowedContentTypes: ["application/pdf"],
-          maximumSizeInBytes: 5 * 1024 * 1024, // 5 MB
+          allowedContentTypes: [
+            "application/pdf",
+            "image/png",
+            "image/jpeg",
+            "image/jpg",
+            "image/webp",
+          ],
+          maximumSizeInBytes: 10 * 1024 * 1024, // 10 MB
           tokenPayload: JSON.stringify({ email: session.user.email }),
           callbackUrl,
         };

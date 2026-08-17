@@ -92,27 +92,40 @@ export async function registerMember(
 
   const dbUser = dbUsers[0];
 
-  // 6. Check existing registration to preserve membership number or generate a new one
+  // 6. Check existing registration
   const existingReg = await db
     .select()
     .from(memberRegistrations)
     .where(eq(memberRegistrations.userId, dbUser.id))
     .limit(1);
 
+  // RESTRICTION: If already verified and approved by admin, edit is locked
+  if (existingReg.length > 0 && existingReg[0].paymentStatus === "verified") {
+    return {
+      success: false,
+      error: "Your membership application has already been verified and approved by the club authority. Profile modifications are locked.",
+    };
+  }
+
   let membershipNumber = existingReg[0]?.membershipNumber;
 
   if (!membershipNumber) {
-    const countResult = await db
-      .select({ count: sql<number>`count(*)` })
+    const allMembers = await db
+      .select({ membershipNumber: memberRegistrations.membershipNumber })
       .from(memberRegistrations);
-    const currentCount = Number(countResult[0]?.count || 0) + 1;
-    membershipNumber = `PAUSC-2026-${String(currentCount).padStart(4, "0")}`;
+
+    const usedNumbers = new Set(allMembers.map((m) => m.membershipNumber));
+    let seq = 1;
+    while (usedNumbers.has(`PAUSC-2026-${String(seq).padStart(4, "0")}`)) {
+      seq++;
+    }
+    membershipNumber = `PAUSC-2026-${String(seq).padStart(4, "0")}`;
   }
 
   let registrationId = "";
 
   try {
-    // Delete existing registration if updating
+    // Delete existing registration if updating unverified record
     if (existingReg.length > 0) {
       await db
         .delete(memberRegistrations)
@@ -137,16 +150,26 @@ export async function registerMember(
         emergencyContact: (data.emergencyContact || "").trim(),
         bkashNumber: (data.bkashNumber || "").trim(),
         transactionId: data.transactionId.trim().toUpperCase(),
+        paymentSlipUrl: (data.paymentSlipUrl || "").trim(),
         paymentAmount: "200",
         paymentStatus: "pending",
+        isFlagged: Boolean(
+          data.isFlagged ||
+            (data.receiptStudentId && data.receiptStudentId.trim() !== data.studentId.trim())
+        ),
+        flaggedReason:
+          data.receiptStudentId && data.receiptStudentId.trim() !== data.studentId.trim()
+            ? `Receipt Student ID (${data.receiptStudentId.trim()}) does not match entered Student ID (${data.studentId.trim()})`
+            : data.flaggedReason || "",
+        receiptStudentId: (data.receiptStudentId || "").trim(),
         deviceInfo: updatedDeviceInfo,
       })
       .returning({ id: memberRegistrations.id });
 
     registrationId = inserted[0]?.id || "";
-  } catch (err) {
+  } catch (err: any) {
     console.error("Database registration error:", err);
-    return { success: false, error: "Failed to record member registration. Please try again." };
+    return { success: false, error: err?.message || "Failed to record member registration. Please try again." };
   }
 
   revalidatePath("/dashboard");
@@ -185,13 +208,14 @@ export async function getMyRegistration() {
 
 export async function getMemberRegistrationDates() {
   try {
-    const start = await db.select().from(settings).where(eq(settings.key, "member_reg_start")).limit(1);
-    const end = await db.select().from(settings).where(eq(settings.key, "member_reg_end")).limit(1);
+    const startSetting = await db.select().from(settings).where(eq(settings.key, "member_reg_start")).limit(1);
+    const endSetting = await db.select().from(settings).where(eq(settings.key, "member_reg_end")).limit(1);
     return {
-      start: start[0]?.value ?? "",
-      end: end[0]?.value ?? "",
+      start: startSetting[0]?.value || null,
+      end: endSetting[0]?.value || null,
     };
   } catch (err) {
-    return { start: "", end: "" };
+    console.error("Failed to read registration dates:", err);
+    return { start: null, end: null };
   }
 }

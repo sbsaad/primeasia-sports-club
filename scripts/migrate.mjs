@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS "member_registrations" (
   "emergency_contact"  TEXT NOT NULL DEFAULT '',
   "bkash_number"       TEXT NOT NULL DEFAULT '',
   "transaction_id"     TEXT NOT NULL,
+  "payment_slip_url"   TEXT NOT NULL DEFAULT '',
   "payment_amount"     TEXT NOT NULL DEFAULT '200',
   "payment_status"     TEXT NOT NULL DEFAULT 'pending',
   "admin_notes"        TEXT NOT NULL DEFAULT '',
@@ -70,6 +71,12 @@ CREATE TABLE IF NOT EXISTS "member_registrations" (
   "registered_at"      TIMESTAMP DEFAULT NOW() NOT NULL,
   "updated_at"         TIMESTAMP DEFAULT NOW() NOT NULL
 );
+
+ALTER TABLE "member_registrations" ADD COLUMN IF NOT EXISTS "payment_slip_url" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "member_registrations" ADD COLUMN IF NOT EXISTS "is_flagged" BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE "member_registrations" ADD COLUMN IF NOT EXISTS "flagged_reason" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "member_registrations" ADD COLUMN IF NOT EXISTS "receipt_student_id" TEXT NOT NULL DEFAULT '';
+
 
 CREATE TABLE IF NOT EXISTS "cv_submissions" (
   "id"                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),

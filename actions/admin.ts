@@ -34,8 +34,12 @@ export type AdminMemberRow = {
   emergencyContact: string;
   bkashNumber: string;
   transactionId: string;
+  paymentSlipUrl: string;
   paymentAmount: string;
   paymentStatus: string;
+  isFlagged: boolean;
+  flaggedReason: string;
+  receiptStudentId: string;
   adminNotes: string;
   deviceInfo: string;
   registeredAt: Date;
@@ -65,8 +69,12 @@ export async function getAllMembers(): Promise<AdminMemberRow[]> {
       emergencyContact: memberRegistrations.emergencyContact,
       bkashNumber: memberRegistrations.bkashNumber,
       transactionId: memberRegistrations.transactionId,
+      paymentSlipUrl: memberRegistrations.paymentSlipUrl,
       paymentAmount: memberRegistrations.paymentAmount,
       paymentStatus: memberRegistrations.paymentStatus,
+      isFlagged: memberRegistrations.isFlagged,
+      flaggedReason: memberRegistrations.flaggedReason,
+      receiptStudentId: memberRegistrations.receiptStudentId,
       adminNotes: memberRegistrations.adminNotes,
       deviceInfo: memberRegistrations.deviceInfo,
       registeredAt: memberRegistrations.registeredAt,

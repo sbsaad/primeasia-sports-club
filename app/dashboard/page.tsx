@@ -18,6 +18,7 @@ import {
   Shield,
   FileText,
   CreditCard,
+  Lock,
 } from "lucide-react";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
@@ -78,7 +79,7 @@ export default async function DashboardPage() {
         {/* Welcome Header */}
         <div
           style={{ display: "flex", alignItems: "center", gap: "20px", marginBottom: "32px" }}
-          className="animate-fade-in-up"
+          className="animate-slide-up"
         >
           {session.user.image ? (
             <Image
@@ -86,7 +87,7 @@ export default async function DashboardPage() {
               alt={session.user.name ?? "User"}
               width={68}
               height={68}
-              style={{ borderRadius: "50%", border: "3px solid var(--gold)", flexShrink: 0, boxShadow: "0 0 20px rgba(201,162,39,0.3)" }}
+              style={{ borderRadius: "50%", border: "3px solid #fbbf24", flexShrink: 0, boxShadow: "0 0 20px rgba(245,158,11,0.4)" }}
             />
           ) : (
             <div
@@ -94,39 +95,41 @@ export default async function DashboardPage() {
                 width: 68,
                 height: 68,
                 borderRadius: "50%",
-                background: "var(--navy-mid)",
-                border: "3px solid var(--gold)",
+                background: "rgba(22, 44, 91, 0.9)",
+                border: "3px solid #fbbf24",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "26px",
+                fontSize: "28px",
                 fontWeight: 900,
-                color: "var(--gold)",
+                color: "#fef08a",
                 flexShrink: 0,
               }}
             >
               {firstName[0]}
             </div>
           )}
+
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "2px" }}>
-              <span style={{ fontSize: "14px", color: "var(--text-muted)" }}>Welcome to PaUGSC,</span>
-              <span className="badge badge-gold" style={{ fontSize: "11px", padding: "2px 8px" }}>
-                Member Portal
-              </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <h1 style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.1rem)", fontWeight: 900, color: "#ffffff", margin: 0 }}>
+                Welcome, <span className="gradient-text">{firstName}</span>! 👋
+              </h1>
+              {isAdmin && (
+                <span className="badge badge-gold">
+                  <Shield size={12} /> Admin
+                </span>
+              )}
             </div>
-            <h1 style={{ fontWeight: 900, fontSize: "clamp(1.6rem, 3.5vw, 2.2rem)", lineHeight: 1.15, color: "var(--text-primary)" }}>
-              {session.user.name || "Student Athlete"}
-            </h1>
-            <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
-              {session.user.email}
+            <p style={{ color: "#cbd5e1", fontSize: "14px", marginTop: "4px" }}>
+              Primeasia University Games & Sports Club · {windowLabel}
             </p>
           </div>
         </div>
 
-        {/* Status Card & 3D Holographic Card Display */}
+        {/* Member Status Card */}
         {member ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }} className="animate-fade-in-up">
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }} className="animate-slide-up">
             {/* Status Alert Banner */}
             <div
               className="glass-card"
@@ -134,16 +137,16 @@ export default async function DashboardPage() {
                 padding: "16px 20px",
                 borderColor:
                   member.paymentStatus === "verified"
-                    ? "rgba(34, 197, 94, 0.35)"
+                    ? "rgba(34, 197, 94, 0.5)"
                     : member.paymentStatus === "rejected"
-                    ? "rgba(239, 68, 68, 0.35)"
-                    : "rgba(245, 158, 11, 0.35)",
+                    ? "rgba(239, 68, 68, 0.5)"
+                    : "rgba(245, 158, 11, 0.5)",
                 background:
                   member.paymentStatus === "verified"
-                    ? "rgba(34, 197, 94, 0.06)"
+                    ? "rgba(34, 197, 94, 0.15)"
                     : member.paymentStatus === "rejected"
-                    ? "rgba(239, 68, 68, 0.06)"
-                    : "rgba(245, 158, 11, 0.06)",
+                    ? "rgba(239, 68, 68, 0.15)"
+                    : "rgba(245, 158, 11, 0.15)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -151,25 +154,25 @@ export default async function DashboardPage() {
                 gap: "12px",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 {member.paymentStatus === "verified" ? (
-                  <ShieldCheck size={24} color="#4ade80" />
+                  <ShieldCheck size={26} color="#4ade80" />
                 ) : member.paymentStatus === "rejected" ? (
-                  <AlertCircle size={24} color="#f87171" />
+                  <AlertCircle size={26} color="#f87171" />
                 ) : (
-                  <Clock size={24} color="#fbbf24" className="animate-spin-slow" />
+                  <Clock size={26} color="#fbbf24" className="animate-spin-slow" />
                 )}
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: "14.5px", color: member.paymentStatus === "verified" ? "#4ade80" : member.paymentStatus === "rejected" ? "#f87171" : "#fbbf24" }}>
+                  <div style={{ fontWeight: 900, fontSize: "15px", color: member.paymentStatus === "verified" ? "#86efac" : member.paymentStatus === "rejected" ? "#fca5a5" : "#fef08a" }}>
                     {member.paymentStatus === "verified"
-                      ? "✓ Official Member Verified"
+                      ? "✓ Official Member Verified & Certified"
                       : member.paymentStatus === "rejected"
                       ? "Payment Verification Rejected"
                       : "bKash Payment Verification in Progress"}
                   </div>
-                  <div style={{ fontSize: "12.5px", color: "var(--text-secondary)", marginTop: "2px" }}>
+                  <div style={{ fontSize: "13px", color: "#e2e8f0", marginTop: "2px" }}>
                     {member.paymentStatus === "verified"
-                      ? "Your membership is active! Download your official pass slip below."
+                      ? "Your membership is certified and locked for 2026. Download your official pass slip below."
                       : member.paymentStatus === "rejected"
                       ? `Reason: ${member.adminNotes || "TrxID mismatch. Please update details."}`
                       : `TrxID: ${member.transactionId} · Under verification by club administrators.`}
@@ -177,9 +180,28 @@ export default async function DashboardPage() {
                 </div>
               </div>
 
-              <Link href="/register" className="btn-outline" style={{ fontSize: "12.5px", padding: "6px 14px" }}>
-                ✏️ Update Details
-              </Link>
+              {member.paymentStatus === "verified" ? (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontSize: "12.5px",
+                    padding: "7px 16px",
+                    background: "rgba(34,197,94,0.25)",
+                    border: "1.5px solid #22c55e",
+                    color: "#86efac",
+                    borderRadius: "10px",
+                    fontWeight: 800,
+                  }}
+                >
+                  <Lock size={14} /> Profile Locked
+                </span>
+              ) : (
+                <Link href="/register" className="btn-outline" style={{ fontSize: "12.5px", padding: "8px 16px" }}>
+                  ✏️ Update Details
+                </Link>
+              )}
             </div>
 
             {/* 3D Holographic Card View */}
@@ -188,11 +210,11 @@ export default async function DashboardPage() {
                 <span className="badge badge-gold" style={{ marginBottom: "8px", display: "inline-block" }}>
                   Official Digital Pass
                 </span>
-                <h2 style={{ fontSize: "20px", fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>
+                <h2 style={{ fontSize: "20px", fontWeight: 900, color: "#ffffff", margin: 0 }}>
                   Primeasia Games & Sports Club ID
                 </h2>
-                <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                  Move your mouse/finger to experience the 3D holographic tilt
+                <p style={{ fontSize: "13px", color: "#cbd5e1", marginTop: "4px" }}>
+                  Move your mouse or swipe to experience the 3D holographic tilt
                 </p>
               </div>
 
@@ -223,101 +245,75 @@ export default async function DashboardPage() {
             {/* Details Grid */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
               <div className="glass-card" style={{ padding: "16px" }}>
-                <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
+                <div style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: 800 }}>
                   Student ID
                 </div>
-                <div style={{ fontSize: "15px", fontWeight: 800, color: "var(--text-primary)", marginTop: "4px" }}>
+                <div style={{ fontSize: "15px", fontWeight: 900, color: "#ffffff", marginTop: "4px" }}>
                   {member.studentId}
                 </div>
-                <div style={{ fontSize: "11.5px", color: "var(--gold)", marginTop: "2px" }}>
+                <div style={{ fontSize: "11.5px", color: "#fbbf24", marginTop: "2px", fontWeight: 700 }}>
                   {getSemesterLabel(member.semester)}
                 </div>
               </div>
 
               <div className="glass-card" style={{ padding: "16px" }}>
-                <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
+                <div style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: 800 }}>
                   Department
                 </div>
-                <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text-primary)", marginTop: "4px" }}>
+                <div style={{ fontSize: "13.5px", fontWeight: 800, color: "#ffffff", marginTop: "4px" }}>
                   {member.department}
                 </div>
               </div>
 
               <div className="glass-card" style={{ padding: "16px" }}>
-                <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
+                <div style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: 800 }}>
                   bKash Payment
                 </div>
-                <div style={{ fontSize: "14px", fontWeight: 800, color: "#f472b6", fontFamily: "monospace", marginTop: "4px" }}>
+                <div style={{ fontSize: "14px", fontWeight: 900, color: "#f43f5e", fontFamily: "monospace", marginTop: "4px" }}>
                   {member.transactionId}
                 </div>
-                <div style={{ fontSize: "11.5px", color: "var(--text-secondary)", marginTop: "2px" }}>
-                  Amount: ৳{member.paymentAmount || "200"}
+                <div style={{ fontSize: "11.5px", color: member.paymentStatus === "verified" ? "#4ade80" : "#fef08a", marginTop: "2px", fontWeight: 700 }}>
+                  200 BDT · {member.paymentStatus.toUpperCase()}
                 </div>
               </div>
 
               <div className="glass-card" style={{ padding: "16px" }}>
-                <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                  Sports Selected
+                <div style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: 800 }}>
+                  Blood & Jersey
                 </div>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--gold-light)", marginTop: "4px" }}>
-                  {sportsList.join(", ")}
+                <div style={{ fontSize: "14px", fontWeight: 900, color: "#ffffff", marginTop: "4px" }}>
+                  {member.bloodGroup} · Size {member.jerseySize}
+                </div>
+                <div style={{ fontSize: "11px", color: "#fbbf24", marginTop: "2px" }}>
+                  (Jersey for later use)
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          /* Not registered prompt */
-          <div
-            className="glass-card glow-border animate-fade-in-up"
-            style={{ padding: "48px 24px", textAlign: "center", marginBottom: "28px" }}
-          >
-            <div style={{ fontSize: "48px", marginBottom: "16px" }} className="animate-float-bob">
-              🏆
+          /* Not registered yet */
+          <div className="glass-card-bright glow-border animate-slide-up" style={{ padding: "40px 24px", textAlign: "center" }}>
+            <div style={{ fontSize: "52px", marginBottom: "14px" }} className="animate-trophy-bounce">
+              🎟️
             </div>
-            <h2 style={{ fontWeight: 900, fontSize: "24px", marginBottom: "10px", color: "var(--text-primary)" }}>
-              You Haven&apos;t Registered as a Member Yet
+            <h2 style={{ fontSize: "22px", fontWeight: 900, color: "#ffffff", marginBottom: "8px" }}>
+              You have not registered for 2026 Membership yet!
             </h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: "15px", maxWidth: "520px", margin: "0 auto 28px", lineHeight: 1.6 }}>
-              Join the official Primeasia University Games and Sports Club for 2026. Get your digital pass, participate in intra and inter-university tournaments, and represent Primeasia with pride!
+            <p style={{ color: "#cbd5e1", fontSize: "14.5px", maxWidth: "520px", margin: "0 auto 24px", lineHeight: 1.6 }}>
+              Complete the registration form with your student ID, sports preferences, and 200 BDT bKash transaction ID to receive your official PaUGSC 3D member pass.
             </p>
-            <Link
-              href="/register"
-              className="btn-gold"
-              style={{ padding: "14px 36px", fontSize: "15px", fontWeight: 800, display: "inline-flex", alignItems: "center", gap: "8px" }}
-            >
-              Complete Registration (200 BDT) <ArrowRight size={16} />
-            </Link>
+
+            {isRegistrationClosed ? (
+              <div style={{ color: "#fca5a5", fontWeight: 700, fontSize: "14px" }}>
+                🔒 Registration window is currently closed.
+              </div>
+            ) : (
+              <Link href="/register" className="btn-neon-gold" style={{ fontSize: "15px", padding: "14px 32px" }}>
+                Register as Member Now <ArrowRight size={18} />
+              </Link>
+            )}
           </div>
         )}
-
-        {/* Quick Action Tiles */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginTop: "28px" }}>
-          <Link href="/register" style={{ textDecoration: "none" }}>
-            <div className="glass-card glow-border" style={{ padding: "20px", cursor: "pointer" }}>
-              <div style={{ fontSize: "28px", marginBottom: "8px" }}>🎽</div>
-              <h3 style={{ fontWeight: 700, fontSize: "15px", color: "var(--text-primary)", marginBottom: "4px" }}>
-                {member ? "View Digital Pass" : "Register as Member"}
-              </h3>
-              <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0 }}>
-                {member ? "Review and download your PDF membership pass." : "Fill details, provide TrxID, and get your pass."}
-              </p>
-            </div>
-          </Link>
-
-          {isAdmin && (
-            <Link href="/admin" style={{ textDecoration: "none" }}>
-              <div className="glass-card glow-border" style={{ padding: "20px", cursor: "pointer", borderColor: "rgba(201, 162, 39, 0.4)" }}>
-                <div style={{ fontSize: "28px", marginBottom: "8px" }}>⚙️</div>
-                <h3 style={{ fontWeight: 700, fontSize: "15px", color: "var(--gold)", marginBottom: "4px" }}>
-                  Admin Command Center
-                </h3>
-                <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0 }}>
-                  Verify member payments, download Excel (.xlsx) and PDF roster.
-                </p>
-              </div>
-            </Link>
-          )}
-        </div>
       </main>
     </div>
   );

@@ -5,6 +5,7 @@ import {
   timestamp,
   uuid,
   integer,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -36,8 +37,12 @@ export const memberRegistrations = pgTable("member_registrations", {
   emergencyContact: text("emergency_contact").notNull().default(""),
   bkashNumber: text("bkash_number").notNull().default(""), // Sender bKash number (optional/recorded)
   transactionId: text("transaction_id").notNull(), // bKash TrxID from Education Fee payment
+  paymentSlipUrl: text("payment_slip_url").notNull().default(""), // Vercel Blob URL to uploaded payment receipt/slip
   paymentAmount: text("payment_amount").notNull().default("200"), // Default 200 BDT
   paymentStatus: text("payment_status").notNull().default("pending"), // pending | verified | rejected
+  isFlagged: boolean("is_flagged").notNull().default(false), // True if ID mismatch or fraud suspected
+  flaggedReason: text("flagged_reason").notNull().default(""), // Reason e.g. "Slip ID 242003032 != Form ID 241001001"
+  receiptStudentId: text("receipt_student_id").notNull().default(""), // Student ID detected on payment receipt
   adminNotes: text("admin_notes").notNull().default(""),
   deviceInfo: text("device_info").notNull().default("{}"),
   registeredAt: timestamp("registered_at").defaultNow().notNull(),
