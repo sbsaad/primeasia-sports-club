@@ -2,9 +2,9 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import AdminTable, { type SubmissionRow } from "@/components/AdminTable";
-
-import { getAllSubmissions, getRecruitmentDates } from "@/actions/admin";
+import AdminMemberTable from "@/components/AdminMemberTable";
+import { getAllMembers, getRegistrationSettings } from "@/actions/admin";
+import { Shield, Sparkles } from "lucide-react";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")
@@ -20,30 +20,32 @@ export default async function AdminPage() {
   const isAdmin = ADMIN_EMAILS.includes(session.user.email.toLowerCase());
   if (!isAdmin) redirect("/dashboard");
 
-  // Fetch all submissions and application dates using server actions
-  const rows = await getAllSubmissions();
-  const dates = await getRecruitmentDates();
+  // Fetch all members & settings
+  const members = await getAllMembers();
+  const settings = await getRegistrationSettings();
 
   return (
     <div style={{ minHeight: "100vh" }}>
       <Navbar isAdmin={true} />
-      <main style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 20px" }}>
-
+      <main style={{ maxWidth: "1240px", margin: "0 auto", padding: "40px 20px 80px" }}>
         {/* Header */}
         <div style={{ marginBottom: "32px" }}>
-          <div className="badge badge-gold" style={{ marginBottom: "12px" }}>
-            ⚙️ Admin Panel
+          <div
+            className="badge badge-gold"
+            style={{ marginBottom: "12px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <Shield size={14} />
+            <span>Admin Command Center</span>
           </div>
-          <h1 style={{ fontWeight: 800, fontSize: "clamp(1.6rem, 4vw, 2.2rem)", marginBottom: "8px" }}>
-            All Applications
+          <h1 style={{ fontWeight: 900, fontSize: "clamp(1.8rem, 4vw, 2.5rem)", marginBottom: "8px", color: "var(--text-primary)" }}>
+            Club <span className="gradient-text">Members Management</span>
           </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: "15px" }}>
-            Browse, search, and download submitted CVs for all positions.
-            The ZIP download organizes files by position folder.
+          <p style={{ color: "var(--text-secondary)", fontSize: "14.5px", maxWidth: "600px" }}>
+            Verify bKash transactions, filter by department or sport, and export detailed member rosters to Excel (.xlsx) or PDF.
           </p>
         </div>
 
-        <AdminTable rows={rows as SubmissionRow[]} initialDates={dates} />
+        <AdminMemberTable rows={members} initialSettings={settings} />
       </main>
     </div>
   );

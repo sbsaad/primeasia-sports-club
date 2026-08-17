@@ -37,11 +37,7 @@ const client = new Client({
 const SQL = `
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-DROP TABLE IF EXISTS "cv_submissions" CASCADE;
-DROP TABLE IF EXISTS "users" CASCADE;
-DROP TABLE IF EXISTS "settings" CASCADE;
-
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
   "id"         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   "google_id"  TEXT UNIQUE NOT NULL,
   "name"       TEXT NOT NULL,
@@ -50,7 +46,32 @@ CREATE TABLE "users" (
   "created_at" TIMESTAMP DEFAULT NOW() NOT NULL
 );
 
-CREATE TABLE "cv_submissions" (
+CREATE TABLE IF NOT EXISTS "member_registrations" (
+  "id"                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "user_id"            UUID NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+  "membership_number"  TEXT UNIQUE NOT NULL,
+  "full_name"          TEXT NOT NULL,
+  "student_id"         TEXT NOT NULL,
+  "phone"              TEXT NOT NULL,
+  "email"              TEXT NOT NULL,
+  "department"         TEXT NOT NULL,
+  "semester"           INTEGER NOT NULL,
+  "gender"             TEXT NOT NULL DEFAULT 'Male',
+  "blood_group"        TEXT NOT NULL DEFAULT 'Unknown',
+  "sports_interests"   TEXT NOT NULL DEFAULT '[]',
+  "jersey_size"        TEXT NOT NULL DEFAULT 'M',
+  "emergency_contact"  TEXT NOT NULL DEFAULT '',
+  "bkash_number"       TEXT NOT NULL DEFAULT '',
+  "transaction_id"     TEXT NOT NULL,
+  "payment_amount"     TEXT NOT NULL DEFAULT '200',
+  "payment_status"     TEXT NOT NULL DEFAULT 'pending',
+  "admin_notes"        TEXT NOT NULL DEFAULT '',
+  "device_info"        TEXT NOT NULL DEFAULT '{}',
+  "registered_at"      TIMESTAMP DEFAULT NOW() NOT NULL,
+  "updated_at"         TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "cv_submissions" (
   "id"                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   "user_id"            UUID NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "full_name"          TEXT NOT NULL,
@@ -68,18 +89,18 @@ CREATE TABLE "cv_submissions" (
   "uploaded_at"        TIMESTAMP DEFAULT NOW() NOT NULL
 );
 
-CREATE TABLE "settings" (
+CREATE TABLE IF NOT EXISTS "settings" (
   "key"   TEXT PRIMARY KEY,
   "value" TEXT NOT NULL
 );
 `;
 
 async function main() {
-  console.log("Connecting to Neon...");
+  console.log("Connecting to Neon Postgres...");
   await client.connect();
   console.log("Connected. Running migrations...");
   await client.query(SQL);
-  console.log("✅ Tables created: users, cv_submissions, settings");
+  console.log("✅ Tables verified/created: users, member_registrations, cv_submissions, settings");
   await client.end();
 }
 
@@ -87,3 +108,4 @@ main().catch((err) => {
   console.error("Migration failed:", err);
   process.exit(1);
 });
+
