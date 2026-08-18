@@ -126,51 +126,85 @@ export async function registerMember(
   let registrationId = "";
 
   try {
-    // Delete existing registration if updating unverified record
-    if (existingReg.length > 0) {
-      await db
-        .delete(memberRegistrations)
-        .where(eq(memberRegistrations.userId, dbUser.id));
-    }
-
     const feeSetting = await db.select().from(settings).where(eq(settings.key, "membership_fee_bdt")).limit(1);
     const activeMembershipFee = feeSetting[0]?.value || "200";
 
-    const inserted = await db
-      .insert(memberRegistrations)
-      .values({
-        userId: dbUser.id,
-        membershipNumber,
-        fullName: data.fullName.trim(),
-        studentId: data.studentId.trim(),
-        phone: data.phone.trim(),
-        email: session.user.email,
-        department: data.department,
-        semester: semResult.semester,
-        gender: data.gender,
-        bloodGroup: data.bloodGroup,
-        sportsInterests: JSON.stringify(data.sportsInterests),
-        jerseySize: data.jerseySize,
-        emergencyContact: (data.emergencyContact || "").trim(),
-        bkashNumber: (data.bkashNumber || "").trim(),
-        transactionId: data.transactionId.trim().toUpperCase(),
-        paymentSlipUrl: (data.paymentSlipUrl || "").trim(),
-        paymentAmount: activeMembershipFee,
-        paymentStatus: "pending",
-        isFlagged: Boolean(
-          data.isFlagged ||
-            (data.receiptStudentId && data.receiptStudentId.trim() !== data.studentId.trim())
-        ),
-        flaggedReason:
-          data.receiptStudentId && data.receiptStudentId.trim() !== data.studentId.trim()
-            ? `Receipt Student ID (${data.receiptStudentId.trim()}) does not match entered Student ID (${data.studentId.trim()})`
-            : data.flaggedReason || "",
-        receiptStudentId: (data.receiptStudentId || "").trim(),
-        deviceInfo: updatedDeviceInfo,
-      })
-      .returning({ id: memberRegistrations.id });
+    const isFlaggedCalculated = Boolean(
+      data.isFlagged ||
+        (data.receiptStudentId && data.receiptStudentId.trim() !== data.studentId.trim())
+    );
 
-    registrationId = inserted[0]?.id || "";
+    const flaggedReasonCalculated =
+      data.receiptStudentId && data.receiptStudentId.trim() !== data.studentId.trim()
+        ? `Receipt Student ID (${data.receiptStudentId.trim()}) does not match entered Student ID (${data.studentId.trim()})`
+        : data.flaggedReason || "";
+
+    if (existingReg.length > 0) {
+      // In-place UPDATE for unverified registration edit
+      const updated = await db
+        .update(memberRegistrations)
+        .set({
+          fullName: data.fullName.trim(),
+          studentId: data.studentId.trim(),
+          phone: data.phone.trim(),
+          email: session.user.email,
+          department: data.department,
+          semester: semResult.semester,
+          gender: data.gender,
+          bloodGroup: data.bloodGroup,
+          sportsInterests: JSON.stringify(data.sportsInterests),
+          jerseySize: data.jerseySize,
+          emergencyContact: (data.emergencyContact || "").trim(),
+          bkashNumber: (data.bkashNumber || "").trim(),
+          transactionId: data.transactionId.trim().toUpperCase(),
+          paymentSlipUrl: (data.paymentSlipUrl || "").trim(),
+          paymentAmount: activeMembershipFee,
+          paymentStatus: "pending", // Reset status to pending so admin re-verifies updated info
+          adminNotes: "", // Clear previous rejection reason
+          isFlagged: isFlaggedCalculated,
+          flaggedReason: flaggedReasonCalculated,
+          receiptStudentId: (data.receiptStudentId || "").trim(),
+          deviceInfo: updatedDeviceInfo,
+          updatedAt: new Date(),
+        })
+        .where(eq(memberRegistrations.id, existingReg[0].id))
+        .returning({ id: memberRegistrations.id });
+
+      registrationId = updated[0]?.id || existingReg[0].id;
+    } else {
+      // INSERT new member registration
+      const inserted = await db
+        .insert(memberRegistrations)
+        .values({
+          userId: dbUser.id,
+          membershipNumber,
+          fullName: data.fullName.trim(),
+          studentId: data.studentId.trim(),
+          phone: data.phone.trim(),
+          email: session.user.email,
+          department: data.department,
+          semester: semResult.semester,
+          gender: data.gender,
+          bloodGroup: data.bloodGroup,
+          sportsInterests: JSON.stringify(data.sportsInterests),
+          jerseySize: data.jerseySize,
+          emergencyContact: (data.emergencyContact || "").trim(),
+          bkashNumber: (data.bkashNumber || "").trim(),
+          transactionId: data.transactionId.trim().toUpperCase(),
+          paymentSlipUrl: (data.paymentSlipUrl || "").trim(),
+          paymentAmount: activeMembershipFee,
+          paymentStatus: "pending",
+          isFlagged: isFlaggedCalculated,
+          flaggedReason: flaggedReasonCalculated,
+          receiptStudentId: (data.receiptStudentId || "").trim(),
+          deviceInfo: updatedDeviceInfo,
+          registeredAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({ id: memberRegistrations.id });
+
+      registrationId = inserted[0]?.id || "";
+    }
   } catch (err: unknown) {
     console.error("Database registration error:", err);
     const errorMessage = err instanceof Error ? err.message : "Failed to record member registration. Please try again.";

@@ -70,6 +70,9 @@ export default function MemberRegistrationForm({
   validityLabel = "SEASON 2026-2027",
 }: Props) {
   const isVerified = existingMember?.paymentStatus === "verified";
+  const [isEditing, setIsEditing] = useState(!existingMember);
+  const [justSaved, setJustSaved] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState("");
   const [step, setStep] = useState<FormStep>(existingMember ? 4 : 1);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -337,6 +340,13 @@ export default function MemberRegistrationForm({
             membershipNumber: res.membershipNumber,
             semester: res.semester,
           });
+          setIsEditing(false);
+          setJustSaved(true);
+          setSaveSuccessMsg(
+            existingMember
+              ? "✅ Your registration details and bKash Transaction ID have been updated successfully! Your updated application is submitted to the admin team."
+              : "🎉 Registration completed successfully! Your digital membership pass has been generated."
+          );
           setStep(4);
 
           // Confetti celebration
@@ -406,7 +416,7 @@ export default function MemberRegistrationForm({
       )}
 
       {/* Progress Wizard Steps */}
-      {!isVerified && !successData && (
+      {!isVerified && (isEditing || !existingMember) && (
         <div
           style={{
             display: "flex",
@@ -1213,20 +1223,39 @@ export default function MemberRegistrationForm({
       {/* ================= STEP 4: REVIEW, LIVE 3D PASS & SUBMIT ================= */}
       {step === 4 && (
         <div className="glass-card animate-slide-up" style={{ padding: "32px 28px", textAlign: "center" }}>
+          {justSaved && (
+            <div
+              className="glass-card animate-fade-in-up"
+              style={{
+                marginBottom: "20px",
+                padding: "14px 18px",
+                background: "rgba(34, 197, 94, 0.15)",
+                border: "1.5px solid #22c55e",
+                borderRadius: "12px",
+                color: "#86efac",
+                fontSize: "13.5px",
+                fontWeight: 700,
+                textAlign: "center",
+              }}
+            >
+              {saveSuccessMsg || "✅ Your registration details & Transaction ID have been updated successfully! Your updated pass is shown below."}
+            </div>
+          )}
+
           <div style={{ marginBottom: "24px" }}>
             <h2 style={{ fontSize: "22px", fontWeight: 900, color: "#ffffff", marginBottom: "6px" }}>
               {isVerified
                 ? "Verified Digital Membership Pass"
-                : existingMember || successData
-                ? "Your Digital Membership Pass"
-                : "Step 4: Live Pass Preview & Confirmation"}
+                : isEditing || (!existingMember && !successData)
+                ? "Step 4: Review & Confirm Registration"
+                : "Your Digital Membership Pass"}
             </h2>
             <p style={{ fontSize: "14px", color: "#cbd5e1", margin: 0 }}>
               {isVerified
                 ? "Your official 2026 membership is certified. Download your PDF slip anytime."
-                : existingMember || successData
-                ? "Your registration is recorded. Download your official PDF slip below."
-                : "Verify your information before generating your official PaUGSC member pass."}
+                : isEditing || (!existingMember && !successData)
+                ? "Verify your information before submitting your registration to club authorities."
+                : "Your registration is recorded. Download your official PDF slip below or edit details if needed."}
             </p>
           </div>
 
@@ -1280,10 +1309,10 @@ export default function MemberRegistrationForm({
           </div>
 
           {/* Submission or Edit Actions */}
-          {!successData && !existingMember ? (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px" }}>
+          {!isVerified && (isEditing || !existingMember) ? (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px", gap: "12px", flexWrap: "wrap" }}>
               <button onClick={() => setStep(3)} className="btn-outline" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                <ArrowLeft size={16} /> Edit Payment
+                <ArrowLeft size={16} /> Back to Payment
               </button>
               <button
                 onClick={handleSubmitRegistration}
@@ -1291,7 +1320,11 @@ export default function MemberRegistrationForm({
                 className="btn-neon-gold"
                 style={{ padding: "14px 36px", fontSize: "15px", fontWeight: 900 }}
               >
-                {isPending ? "Submitting Registration..." : "Complete Registration & Issue Member Pass 🚀"}
+                {isPending
+                  ? "Saving Changes..."
+                  : existingMember
+                  ? "💾 Save & Update Registration Details 🚀"
+                  : "Complete Registration & Issue Member Pass 🚀"}
               </button>
             </div>
           ) : isVerified ? (
@@ -1315,14 +1348,18 @@ export default function MemberRegistrationForm({
               <span>Membership verified & locked. Modifications are disabled.</span>
             </div>
           ) : (
-            /* Pending / Rejected members can still edit to fix typos or re-enter TrxID */
+            /* Pending / Rejected members can click to edit */
             <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "20px", flexWrap: "wrap" }}>
               <button
-                onClick={() => setStep(1)}
-                className="btn-outline"
-                style={{ padding: "9px 18px", fontSize: "13px" }}
+                onClick={() => {
+                  setIsEditing(true);
+                  setJustSaved(false);
+                  setStep(1);
+                }}
+                className="btn-gold"
+                style={{ padding: "10px 24px", fontSize: "13.5px", display: "inline-flex", alignItems: "center", gap: "6px" }}
               >
-                ✏️ Edit My Registration Details
+                <Edit3 size={15} /> ✏️ Edit My Registration Details
               </button>
             </div>
           )}

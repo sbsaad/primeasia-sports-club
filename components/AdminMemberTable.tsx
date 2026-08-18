@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { AdminMemberRow, AdminDonationRow } from "@/actions/admin";
 import {
@@ -102,6 +103,8 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
   // Status updating state
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [copiedTrxId, setCopiedTrxId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const router = useRouter();
 
   const memFeeNumber = parseFloat(membershipFee || "200") || 200;
 
@@ -578,7 +581,22 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
                 ))}
               </div>
 
-              {/* Export Buttons */}
+              {/* Refresh & Export Buttons */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRefreshing(true);
+                  router.refresh();
+                  setTimeout(() => setIsRefreshing(false), 800);
+                }}
+                disabled={isRefreshing}
+                className="btn-outline"
+                title="Refresh Table Data"
+                style={{ padding: "5px 10px", fontSize: "11.5px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+              >
+                <RefreshCw size={13} className={isRefreshing ? "animate-spin" : ""} color="#fbbf24" />
+                <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
+              </button>
               <button
                 onClick={() => exportMembersToExcel(filtered)}
                 className="btn-outline"
