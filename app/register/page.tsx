@@ -6,7 +6,7 @@ import MemberRegistrationForm from "@/components/MemberRegistrationForm";
 import { getMyRegistration, getMemberRegistrationDates, getClubSettings } from "@/actions/member";
 import ThreeSportsBackground from "@/components/ThreeSportsBackground";
 import Link from "next/link";
-import { Sparkles, Calendar, Lock } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")

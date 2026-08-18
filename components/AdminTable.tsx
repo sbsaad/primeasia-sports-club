@@ -25,6 +25,16 @@ export type SubmissionRow = {
   userAvatar: string | null;
 };
 
+interface ParsedDeviceInfo {
+  deviceId?: string;
+  ip?: string;
+  userAgent?: string;
+  platform?: string;
+  screen?: string;
+  timezone?: string;
+  language?: string;
+}
+
 const POSITION_COLORS: Record<string, string> = {
   "President": "badge-gold",
   "Vice President": "badge-blue",
@@ -86,7 +96,7 @@ export default function AdminTable({ rows, initialDates }: Props) {
           acc[info.deviceId] = (acc[info.deviceId] || 0) + 1;
         }
       }
-    } catch (e) {}
+    } catch {}
     return acc;
   }, {} as Record<string, number>);
 
@@ -99,7 +109,7 @@ export default function AdminTable({ rows, initialDates }: Props) {
           acc[info.ip] = (acc[info.ip] || 0) + 1;
         }
       }
-    } catch (e) {}
+    } catch {}
     return acc;
   }, {} as Record<string, number>);
 
@@ -112,7 +122,7 @@ export default function AdminTable({ rows, initialDates }: Props) {
       await saveRecruitmentDates(startIso, endIso);
       setDateMessage("✅ Dates saved successfully!");
       setTimeout(() => setDateMessage(""), 3000);
-    } catch (err) {
+    } catch {
       setDateMessage("❌ Failed to save recruitment window dates.");
     } finally {
       setIsSavingDates(false);
@@ -126,7 +136,7 @@ export default function AdminTable({ rows, initialDates }: Props) {
       await resetRecruitmentData();
       alert("Recruitment database successfully reset!");
       window.location.reload();
-    } catch (err) {
+    } catch {
       alert("Failed to reset database. Please try again.");
     } finally {
       setIsResetting(false);
@@ -154,7 +164,7 @@ export default function AdminTable({ rows, initialDates }: Props) {
           const ipDup = info.ip && ipCounts[info.ip] > 1;
           hasFlag = !!(devDup || ipDup);
         }
-      } catch (e) {}
+      } catch {}
       matchAudit = hasFlag;
     }
 
@@ -249,12 +259,12 @@ export default function AdminTable({ rows, initialDates }: Props) {
 
       // Generate security audit report text
       const flaggedSubmissions = targets.filter(row => {
-        let parsedDev: any = null;
+        let parsedDev: ParsedDeviceInfo | null = null;
         try {
           if (row.deviceInfo) parsedDev = JSON.parse(row.deviceInfo);
-        } catch(e){}
-        const isDeviceDup = parsedDev?.deviceId && deviceIdCounts[parsedDev.deviceId] > 1;
-        const isIpDup = parsedDev?.ip && ipCounts[parsedDev.ip] > 1;
+        } catch {}
+        const isDeviceDup = Boolean(parsedDev?.deviceId && deviceIdCounts[parsedDev.deviceId] > 1);
+        const isIpDup = Boolean(parsedDev?.ip && ipCounts[parsedDev.ip] > 1);
         return isDeviceDup || isIpDup;
       });
 
@@ -276,10 +286,10 @@ export default function AdminTable({ rows, initialDates }: Props) {
         auditReportText += "⚠️ FLAGGED SUBMISSIONS (Multiple applications from same device/IP):\n\n";
         
         flaggedSubmissions.forEach((row, idx) => {
-          let parsedDev: any = null;
+          let parsedDev: ParsedDeviceInfo | null = null;
           try {
             if (row.deviceInfo) parsedDev = JSON.parse(row.deviceInfo);
-          } catch(e){}
+          } catch {}
           
           const devId = parsedDev?.deviceId || "Unknown";
           const ipAddr = parsedDev?.ip || "Unknown";
@@ -302,17 +312,20 @@ export default function AdminTable({ rows, initialDates }: Props) {
       const zipBlob = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement("a");
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       a.href = url;
-      a.download = `PaUGSC_All_Applicants_${Date.now()}.zip`;
+      a.download = `PaUGSC_All_Applicants_${timestamp}.zip`;
       a.click();
       URL.revokeObjectURL(url);
 
       setDownloadProgress(null);
-    } catch (err: any) {
-      if (err.message === "Cancelled by user") {
+    } catch (err: unknown) {
+      const isCancelled = err instanceof Error && err.message === "Cancelled by user";
+      if (isCancelled) {
         console.log("Download cancelled by user");
       } else {
-        alert("Failed to download ZIP: " + (err.message || err));
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        alert("Failed to download ZIP: " + errorMsg);
       }
       setDownloadProgress(null);
     } finally {
@@ -496,10 +509,10 @@ export default function AdminTable({ rows, initialDates }: Props) {
             }}
           >
             ⚠️ Flagged Submissions ({rows.filter(row => {
-              let parsedDev: any = null;
+              let parsedDev: ParsedDeviceInfo | null = null;
               try {
                 if (row.deviceInfo) parsedDev = JSON.parse(row.deviceInfo);
-              } catch(e){}
+              } catch {}
               const devDup = parsedDev?.deviceId && deviceIdCounts[parsedDev.deviceId] > 1;
               const ipDup = parsedDev?.ip && ipCounts[parsedDev.ip] > 1;
               return devDup || ipDup;
@@ -567,12 +580,12 @@ export default function AdminTable({ rows, initialDates }: Props) {
               </thead>
               <tbody>
                 {filtered.map(row => {
-                  let parsedDev: any = null;
+                  let parsedDev: ParsedDeviceInfo | null = null;
                   try {
                     if (row.deviceInfo) parsedDev = JSON.parse(row.deviceInfo);
-                  } catch(e){}
-                  const isDeviceSuspicious = parsedDev?.deviceId && deviceIdCounts[parsedDev.deviceId] > 1;
-                  const isIpSuspicious = parsedDev?.ip && ipCounts[parsedDev.ip] > 1;
+                  } catch {}
+                  const isDeviceSuspicious = Boolean(parsedDev?.deviceId && deviceIdCounts[parsedDev.deviceId] > 1);
+                  const isIpSuspicious = Boolean(parsedDev?.ip && ipCounts[parsedDev.ip] > 1);
 
                   return (
                     <tr key={row.id}>
@@ -598,7 +611,7 @@ export default function AdminTable({ rows, initialDates }: Props) {
                                 </span>
                               )}
                               {isIpSuspicious && (
-                                <span title={`Multiple submissions from same IP: ${parsedDev.ip}`} style={{ fontSize: "11px", background: "rgba(245,158,11,0.2)", color: "#fbbf24", padding: "1px 6px", borderRadius: "4px" }}>
+                                <span title={`Multiple submissions from same IP: ${parsedDev?.ip || ""}`} style={{ fontSize: "11px", background: "rgba(245,158,11,0.2)", color: "#fbbf24", padding: "1px 6px", borderRadius: "4px" }}>
                                   ⚠️ Shared IP
                                 </span>
                               )}
@@ -734,12 +747,12 @@ export default function AdminTable({ rows, initialDates }: Props) {
 
       {/* Details Viewer Modal */}
       {selectedRow && (() => {
-        let deviceParsed: any = null;
+        let deviceParsed: ParsedDeviceInfo | null = null;
         try {
           if (selectedRow.deviceInfo) deviceParsed = JSON.parse(selectedRow.deviceInfo);
-        } catch(e){}
-        const hasDeviceWarning = deviceParsed?.deviceId && deviceIdCounts[deviceParsed.deviceId] > 1;
-        const hasIpWarning = deviceParsed?.ip && ipCounts[deviceParsed.ip] > 1;
+        } catch {}
+        const hasDeviceWarning = Boolean(deviceParsed?.deviceId && deviceIdCounts[deviceParsed.deviceId] > 1);
+        const hasIpWarning = Boolean(deviceParsed?.ip && ipCounts[deviceParsed.ip] > 1);
 
         return (
           <div style={{
@@ -763,25 +776,25 @@ export default function AdminTable({ rows, initialDates }: Props) {
                 </button>
               </div>
 
-              {hasDeviceWarning && (
+              {hasDeviceWarning && deviceParsed?.deviceId && (
                 <div className="glass-card" style={{
                   padding: "12px 16px", marginBottom: "12px",
                   borderColor: "rgba(239, 68, 68, 0.4)",
                   background: "rgba(239, 68, 68, 0.08)",
                   color: "#f87171", fontSize: "13px", display: "flex", gap: "8px", alignItems: "center"
                 }}>
-                  <span>⚠️</span> <strong>Shared Device Warning:</strong> {deviceIdCounts[deviceParsed.deviceId]} applications have been submitted from this browser fingerprint!
+                  <span>⚠️</span> <strong>Shared Device Warning:</strong> {deviceIdCounts[deviceParsed.deviceId] || 1} applications have been submitted from this browser fingerprint!
                 </div>
               )}
 
-              {hasIpWarning && (
+              {hasIpWarning && deviceParsed?.ip && (
                 <div className="glass-card" style={{
                   padding: "12px 16px", marginBottom: "20px",
                   borderColor: "rgba(245, 158, 11, 0.4)",
                   background: "rgba(245, 158, 11, 0.08)",
                   color: "#fbbf24", fontSize: "13px", display: "flex", gap: "8px", alignItems: "center"
                 }}>
-                  <span>⚠️</span> <strong>Shared IP Warning:</strong> {ipCounts[deviceParsed.ip]} applications have been submitted from this IP address ({deviceParsed.ip})!
+                  <span>⚠️</span> <strong>Shared IP Warning:</strong> {ipCounts[deviceParsed.ip] || 1} applications have been submitted from this IP address ({deviceParsed.ip})!
                 </div>
               )}
 

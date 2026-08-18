@@ -8,10 +8,8 @@ import {
   RefreshCw,
   Sparkles,
   X,
-  CheckCircle2,
   AlertCircle,
   Scan,
-  CreditCard,
 } from "lucide-react";
 
 interface Props {
@@ -98,8 +96,9 @@ export default function RenewalModal({
       } else {
         setIsSuccess(true);
       }
-    } catch (err: any) {
-      setErrorMsg(err?.message || "An unexpected error occurred. Please try again.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred. Please try again.";
+      setErrorMsg(msg);
     } finally {
       setIsSubmitting(false);
     }

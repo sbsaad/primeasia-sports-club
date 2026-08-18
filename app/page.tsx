@@ -4,20 +4,7 @@ import { redirect } from "next/navigation";
 import { getMemberRegistrationDates } from "@/actions/member";
 import CountdownTimer from "@/components/CountdownTimer";
 import ThreeSportsBackground from "@/components/ThreeSportsBackground";
-import Link from "next/link";
-import {
-  Trophy,
-  Sparkles,
-  Shield,
-  ArrowRight,
-  CheckCircle2,
-  Calendar,
-  CreditCard,
-  Users,
-  Target,
-  Medal,
-  Award,
-} from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 export default async function LandingPage() {
   const session = await auth();

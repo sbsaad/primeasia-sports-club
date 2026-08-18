@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import { donations, memberRegistrations, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { DONATION_CATEGORIES } from "@/lib/validations";
 
 export type DonationInput = {
   category: string;

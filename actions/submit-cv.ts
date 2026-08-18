@@ -80,7 +80,7 @@ export async function submitCVWithUrl(
   const reqHeaders = await headers();
   const ip = reqHeaders.get("x-forwarded-for")?.split(",")[0].trim() || reqHeaders.get("x-real-ip") || "127.0.0.1";
   let deviceInfoObj = {};
-  try { deviceInfoObj = JSON.parse(payload.deviceInfo); } catch (e) {}
+  try { deviceInfoObj = JSON.parse(payload.deviceInfo); } catch {}
   const updatedDeviceInfo = JSON.stringify({ ...deviceInfoObj, ip });
 
   // Semester check
@@ -180,7 +180,7 @@ export async function submitCV(formData: FormData): Promise<SubmitResult> {
   let deviceInfoObj = {};
   try {
     deviceInfoObj = JSON.parse(deviceInfo);
-  } catch (e) {}
+  } catch {}
   
   const updatedDeviceInfo = JSON.stringify({
     ...deviceInfoObj,

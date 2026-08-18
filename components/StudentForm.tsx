@@ -1,7 +1,7 @@
 // components/StudentForm.tsx
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition } from "react";
 import { calculateSemester, getSemesterLabel } from "@/lib/semester";
 import { POSITIONS, type Position } from "@/lib/validations";
 import { submitCVWithUrl, type SubmitResult } from "@/actions/submit-cv";
@@ -265,7 +265,7 @@ export default function StudentForm({ existingSubmission }: Props) {
               <span>🛡️</span> Security & Verification Warning
             </h4>
             <p style={{ fontSize: "12.5px", lineHeight: 1.5, margin: 0, color: "var(--text-secondary)" }}>
-              To ensure recruitment integrity and prevent unauthorized submissions, device fingerprints, IP checks, and browser signatures are recorded. Submitting fraudulent applications under other students' names will result in immediate disqualification and reference to the university discipline committee.
+              To ensure recruitment integrity and prevent unauthorized submissions, device fingerprints, IP checks, and browser signatures are recorded. Submitting fraudulent applications under other students&apos; names will result in immediate disqualification and reference to the university discipline committee.
             </p>
           </div>
 
@@ -397,7 +397,7 @@ export default function StudentForm({ existingSubmission }: Props) {
                   style={{ cursor: "pointer", accentColor: "var(--gold)", width: "16px", height: "16px" }}
                 />
                 <label htmlFor="noPriorClub" style={{ fontSize: "13px", color: "var(--text-secondary)", cursor: "pointer", userSelect: "none" }}>
-                  I wasn't in any club committee before
+                  I wasn&apos;t in any club committee before
                 </label>
               </div>
               <textarea

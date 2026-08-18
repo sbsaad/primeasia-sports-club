@@ -3,7 +3,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { users, memberRegistrations, settings } from "@/lib/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { memberRegistrationSchema, type MemberRegistrationFormValues } from "@/lib/validations";
 import { calculateSemester } from "@/lib/semester";
 import { revalidatePath } from "next/cache";
@@ -71,7 +71,7 @@ export async function registerMember(
     if (payload.deviceInfo) {
       deviceInfoObj = JSON.parse(payload.deviceInfo);
     }
-  } catch (e) {}
+  } catch {}
 
   const updatedDeviceInfo = JSON.stringify({
     ...deviceInfoObj,
@@ -110,16 +110,17 @@ export async function registerMember(
   let membershipNumber = existingReg[0]?.membershipNumber;
 
   if (!membershipNumber) {
+    const currentYear = new Date().getFullYear();
     const allMembers = await db
       .select({ membershipNumber: memberRegistrations.membershipNumber })
       .from(memberRegistrations);
 
     const usedNumbers = new Set(allMembers.map((m) => m.membershipNumber));
     let seq = 1;
-    while (usedNumbers.has(`PAUSC-2026-${String(seq).padStart(4, "0")}`)) {
+    while (usedNumbers.has(`PAUSC-${currentYear}-${String(seq).padStart(4, "0")}`)) {
       seq++;
     }
-    membershipNumber = `PAUSC-2026-${String(seq).padStart(4, "0")}`;
+    membershipNumber = `PAUSC-${currentYear}-${String(seq).padStart(4, "0")}`;
   }
 
   let registrationId = "";
@@ -170,9 +171,10 @@ export async function registerMember(
       .returning({ id: memberRegistrations.id });
 
     registrationId = inserted[0]?.id || "";
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Database registration error:", err);
-    return { success: false, error: err?.message || "Failed to record member registration. Please try again." };
+    const errorMessage = err instanceof Error ? err.message : "Failed to record member registration. Please try again.";
+    return { success: false, error: errorMessage };
   }
 
   revalidatePath("/dashboard");
@@ -207,6 +209,16 @@ export async function getMyRegistration() {
     .limit(1);
 
   return regs[0] ?? null;
+}
+
+interface MemberRenewalRecord {
+  renewalDate: Date | string;
+  trxId: string;
+  amount: string;
+  slipUrl: string;
+  status: string;
+  verifiedAt?: Date | string;
+  validUntil?: Date | string;
 }
 
 export async function renewMembership(payload: {
@@ -244,10 +256,10 @@ export async function renewMembership(payload: {
     return { success: false, error: "No existing membership record found to renew." };
   }
 
-  let history: any[] = [];
+  let history: MemberRenewalRecord[] = [];
   try {
     history = JSON.parse(member.renewalHistory || "[]");
-  } catch (e) {
+  } catch {
     history = [];
   }
 

@@ -9,14 +9,8 @@ import {
   HeartHandshake,
   Sparkles,
   X,
-  CheckCircle2,
   AlertCircle,
-  FileText,
-  Upload,
   Scan,
-  Coins,
-  MessageSquare,
-  Lock,
 } from "lucide-react";
 
 interface Props {
@@ -34,8 +28,6 @@ export default function DonationModal({
   isOpen,
   onClose,
   defaultCategory = "Tournament & Inter-University Fund",
-  donorName,
-  donorStudentId,
   donorPhone,
 }: Props) {
   const [category, setCategory] = useState(defaultCategory);
@@ -43,7 +35,7 @@ export default function DonationModal({
   const [customAmount, setCustomAmount] = useState("");
   const [trxId, setTrxId] = useState("");
   const [donorNote, setDonorNote] = useState("");
-  const [phone, setPhone] = useState(donorPhone || "");
+  const phone = donorPhone || "";
 
   // OCR state
   const [isScanningSlip, setIsScanningSlip] = useState(false);
@@ -122,8 +114,9 @@ export default function DonationModal({
       } else {
         setIsSuccess(true);
       }
-    } catch (err: any) {
-      setErrorMsg(err?.message || "An unexpected error occurred. Please try again.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred. Please try again.";
+      setErrorMsg(msg);
     } finally {
       setIsSubmitting(false);
     }

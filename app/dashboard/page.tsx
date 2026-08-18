@@ -15,11 +15,8 @@ import {
   ShieldCheck,
   Clock,
   AlertCircle,
-  Trophy,
   ArrowRight,
   Shield,
-  FileText,
-  CreditCard,
   Lock,
 } from "lucide-react";
 

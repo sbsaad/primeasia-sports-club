@@ -117,10 +117,23 @@ export default function AdminMemberTable({ rows, donations = [], initialSettings
       r.transactionId.toLowerCase().includes(q) ||
       r.membershipNumber.toLowerCase().includes(q) ||
       (r.receiptStudentId && r.receiptStudentId.toLowerCase().includes(q));
-
     const matchStatus = statusFilter === "All" || r.paymentStatus === statusFilter;
-    const matchDept = deptFilter === "All" || r.department.toLowerCase().includes(deptFilter.toLowerCase());
     const matchFlag = !flagFilter || r.isFlagged || (r.receiptStudentId && r.receiptStudentId !== r.studentId);
+    const matchDept =
+      deptFilter === "All" ||
+      r.department.toLowerCase().includes(deptFilter.toLowerCase()) ||
+      deptFilter.toLowerCase().includes(r.department.toLowerCase()) ||
+      (() => {
+        const filterCode = deptFilter.match(/\(([^)]+)\)/)?.[1]?.toLowerCase();
+        const rowCode = r.department.match(/\(([^)]+)\)/)?.[1]?.toLowerCase();
+        if (filterCode && rowCode && filterCode === rowCode) return true;
+        const filterBase = deptFilter.replace(/\s*\([^)]*\)/, "").trim().toLowerCase();
+        const rowBase = r.department.replace(/\s*\([^)]*\)/, "").trim().toLowerCase();
+        return (
+          filterBase.length > 2 &&
+          (filterBase === rowBase || rowBase.includes(filterBase) || filterBase.includes(rowBase))
+        );
+      })();
 
     let matchSport = true;
     if (sportFilter !== "All") {

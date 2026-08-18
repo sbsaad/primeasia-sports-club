@@ -182,7 +182,14 @@ export async function updateMemberPaymentStatus(
     validUntil = d;
   }
 
-  const updatePayload: any = {
+  interface MemberPaymentUpdate {
+    paymentStatus: "pending" | "verified" | "rejected" | "expired" | "pending_renewal";
+    adminNotes: string;
+    updatedAt: Date;
+    validUntil?: Date;
+  }
+
+  const updatePayload: MemberPaymentUpdate = {
     paymentStatus,
     adminNotes: adminNotes ?? "",
     updatedAt: new Date(),
@@ -199,6 +206,16 @@ export async function updateMemberPaymentStatus(
 
   revalidatePath("/admin");
   revalidatePath("/dashboard");
+}
+
+interface RenewalItem {
+  status?: string;
+  verifiedAt?: Date | string;
+  validUntil?: Date | string;
+  renewalDate?: Date | string;
+  trxId?: string;
+  amount?: string;
+  slipUrl?: string;
 }
 
 export async function verifyMemberRenewal(id: string) {
@@ -218,10 +235,10 @@ export async function verifyMemberRenewal(id: string) {
   const newValidUntil = new Date();
   newValidUntil.setMonth(newValidUntil.getMonth() + months);
 
-  let history: any[] = [];
+  let history: RenewalItem[] = [];
   try {
     history = JSON.parse(member.renewalHistory || "[]");
-  } catch (e) {
+  } catch {
     history = [];
   }
 

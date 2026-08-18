@@ -7,15 +7,8 @@ import DonationModal from "./DonationModal";
 import RenewalModal from "./RenewalModal";
 import {
   HeartHandshake,
-  Sparkles,
   Coins,
-  ShieldCheck,
-  Clock,
-  AlertCircle,
   RefreshCw,
-  TrendingUp,
-  Award,
-  ChevronRight,
 } from "lucide-react";
 
 interface Props {
@@ -40,12 +33,7 @@ export default function DashboardDonationSection({
 }: Props) {
   const [isDonationOpen, setIsDonationOpen] = useState(false);
   const [isRenewalOpen, setIsRenewalOpen] = useState(false);
-  const [selectedDonationCategory, setSelectedDonationCategory] = useState<string>("General Club Expansion");
-
-  const openDonationForCategory = (cat: string) => {
-    setSelectedDonationCategory(cat);
-    setIsDonationOpen(true);
-  };
+  const [selectedDonationCategory] = useState<string>("General Club Expansion");
 
   const isExpired = memberData?.paymentStatus === "expired" || (memberData?.validUntil && new Date() > new Date(memberData.validUntil));
   const isPendingRenewal = memberData?.paymentStatus === "pending_renewal";

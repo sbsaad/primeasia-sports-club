@@ -3,17 +3,19 @@ import { z } from "zod";
 
 export const DEPARTMENTS = [
   "Computer Science & Engineering (CSE)",
-  "Business Administration (BBA)",
+  "Bachelor of Business Administration (BBA)",
+  "Master of Business Administration (MBA)",
   "Electrical & Electronic Engineering (EEE)",
-  "Textile Engineering (TE)",
-  "Pharmacy",
-  "Law",
-  "English",
-  "Architecture",
-  "Microbiology",
-  "Biochemistry",
+  "Textile Engineering (TXE)",
+  "Pharmacy (B.Pharm)",
+  "Pharmacy (M.Pharm)",
+  "Biochemistry & Molecular Biology (BMB)",
+  "Microbiology (MBIO)",
+  "Public Health Nutrition (PHN)",
   "International Tourism & Hospitality Management (ITHM)",
-  "Public Health (MPH)",
+  "Law (LAW)",
+  "English (ENG)",
+  "Architecture (Arch)",
   "✍️ Other / Write Manually",
 ] as const;
 
